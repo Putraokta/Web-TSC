@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
+import { Controller } from "react-hook-form";
 import useLogin from "@/hooks/useLogin";
-import { useRouter } from "next/navigation";
 
 const formStyle: React.CSSProperties = {
   maxWidth: 400,
@@ -60,52 +60,34 @@ const buttonDisabledStyle: React.CSSProperties = {
 };
 
 export default function LoginForm() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const { login, loading, error } = useLogin();
-  const router = useRouter();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await login({ username, password }, () => router.push("/"));
-    } catch (err) {
-      // Error is handled by the hook
-    }
-  };
+  const { control, errors, handlerSignIn, isPendingSignIn } = useLogin();
 
   return (
-    <form onSubmit={handleSubmit} style={formStyle}>
+    <form onSubmit={handlerSignIn} style={formStyle}>
       <h2 style={headerStyle}>Login</h2>
-      {error && <div style={errorStyle}>{error}</div>}
+      {errors.root && <div style={errorStyle}>{errors.root.message}</div>}
+
       <div style={inputGroupStyle}>
         <label style={labelStyle}>Username</label>
-        <input
-          style={inputStyle}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
+        <Controller name="username" control={control} render={({ field }) => <input {...field} style={inputStyle} placeholder="Masukkan username" />} />
+        {errors.username && <div style={errorStyle}>{errors.username.message}</div>}
       </div>
+
       <div style={inputGroupStyle}>
         <label style={labelStyle}>Password</label>
-        <input
-          style={inputStyle}
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+        <Controller name="password" control={control} render={({ field }) => <input {...field} style={inputStyle} type="password" placeholder="Masukkan password" />} />
+        {errors.password && <div style={errorStyle}>{errors.password.message}</div>}
       </div>
+
       <button
         style={{
           ...buttonStyle,
-          ...(loading ? buttonDisabledStyle : {}),
+          ...(isPendingSignIn ? buttonDisabledStyle : {}),
         }}
         type="submit"
-        disabled={loading}
+        disabled={isPendingSignIn}
       >
-        {loading ? "Logging in..." : "Login"}
+        {isPendingSignIn ? "Logging in..." : "Login"}
       </button>
     </form>
   );

@@ -1,63 +1,26 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useContext } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { authKey } from "@/keys/auth.key";
 import authService from "@/services/auth.service";
-import { setAuthToken } from "@/lib/axioos";
-import { getErrorMessage } from "@/lib/error";
+import { AuthContext } from "@/context/AuthContext";
 
-type User = any;
+export const useAuthMe = () => {
+  return useQuery({
+    queryKey: authKey.me(),
+    queryFn: async () => {
+      const response = await authService.getProfile();
+      return response?.data || response;
+    },
+    retry: false,
+  });
+};
 
 export default function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-
-  const loadProfile = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await authService.getProfile();
-      const data = res?.data || res;
-      setUser(data);
-    } catch (err) {
-      setError(getErrorMessage(err));
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const logout = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await authService.logout();
-    } catch (err) {
-      // ignore server logout errors but capture message
-      setError(getErrorMessage(err));
-    } finally {
-      setAuthToken(null);
-      setUser(null);
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    try {
-      if (typeof window !== "undefined") {
-        const t = localStorage.getItem("accessToken");
-        if (t) {
-          setIsAuthenticated(true);
-          loadProfile();
-          return;
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-    setIsAuthenticated(false);
-  }, [loadProfile]);
-
-  return { user, loading, error, loadProfile, logout, isAuthenticated };
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth harus dipakai di dalam AuthProvider");
+  }
+  return context;
 }

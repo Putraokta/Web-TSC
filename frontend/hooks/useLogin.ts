@@ -1,38 +1,86 @@
-import { useCallback, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useRouter, useSearchParams } from "next/navigation";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "react-toastify";
+import * as yup from "yup";
+
 import authService from "@/services/auth.service";
-import { setAuthToken } from "@/lib/axioos";
-import { getErrorMessage } from "@/lib/error";
+import { authKey } from "@/keys/auth.key";
 import { ILogin } from "@/types/Auth";
 
-type LoginResult = {
-	loading: boolean;
-	error: string | null;
-	login: (payload: ILogin, onSuccess?: () => void) => Promise<void>;
-};
+// Schema validasi dengan Yup (karena kamu menggunakan yup di package.json)
+const loginSchema = yup.object().shape({
+  username: yup.string().required("Username is required"),
+  password: yup.string().required("Password is required"),
+});
 
-export default function useLogin(): LoginResult {
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
+export default function useLogin() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
 
-	const login = useCallback(async (payload: ILogin, onSuccess?: () => void) => {
-		setLoading(true);
-		setError(null);
-		try {
-			const res = await authService.login(payload);
-			const accessToken = res?.data?.accessToken || res?.accessToken;
-			if (accessToken) {
-				setAuthToken(accessToken);
-			}
-			if (onSuccess) onSuccess();
-		} catch (err: any) {
-			const msg = getErrorMessage(err) || "Login failed";
-			setError(msg);
-			throw err;
-		} finally {
-			setLoading(false);
-		}
-	}, []);
+  const {
+    control,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors },
+  } = useForm<ILogin>({
+    resolver: yupResolver(loginSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
 
-	return { loading, error, login };
+  const { mutate: mutateSignIn, isPending: isPendingSignIn } = useMutation({
+    mutationFn: authService.login, // Memanggil fungsi login dari authService
+    onError(error: any) {
+      const message = error?.response?.data?.message || error.message || "Login failed";
+      setError("root", {
+        message: message,
+      });
+      toast.error(message);
+    },
+
+    onSuccess: (data) => {
+      // Invalidate token / resync user state
+      queryClient.invalidateQueries({ queryKey: authKey.me() });
+      toast.success("Login successful");
+      reset();
+
+      // Cek callbackUrl dari URL Params
+      const callbackUrl = searchParams.get("callbackUrl");
+
+      if (callbackUrl) {
+        // Ada callbackUrl -> kembali ke halaman yang di-request sebelumnya
+        router.push(callbackUrl);
+      } else {
+        // Redirect berdasarkan role dari backend
+        const role = data?.data?.role;
+        // TODO: Sesuaikan logika routing-mu di sini
+        if (role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/");
+        }
+      }
+    },
+  });
+
+  // Helper function untuk trigger submit form
+  const handlerSignIn = handleSubmit((data) => {
+    mutateSignIn(data);
+  });
+
+  return {
+    control,
+    handleSubmit,
+    setError,
+    reset,
+    errors,
+    handlerSignIn,
+    isPendingSignIn,
+  };
 }
-
