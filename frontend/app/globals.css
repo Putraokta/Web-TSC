@@ -228,7 +228,9 @@
   justify-content: center;
   gap: 10px;
   cursor: pointer;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
 .auth-submit:disabled {

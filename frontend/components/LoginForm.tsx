@@ -25,13 +25,7 @@ export default function LoginForm() {
               <circle cx="12" cy="7" r="4" />
             </svg>
           </span>
-          <Controller
-            name="username"
-            control={control}
-            render={({ field }) => (
-              <input {...field} type="text" placeholder="Masukkan email atau username" autoComplete="off"/>
-            )}
-          />
+          <Controller name="username" control={control} render={({ field }) => <input {...field} type="text" placeholder="Masukkan email atau username" autoComplete="off" />} />
         </div>
         {errors.username && <div className="auth-error">{errors.username.message}</div>}
       </div>
@@ -45,13 +39,7 @@ export default function LoginForm() {
               <rect x="5" y="11" width="14" height="10" rx="2" />
             </svg>
           </span>
-          <Controller
-            name="password"
-            control={control}
-            render={({ field }) => (
-              <input {...field} type="password" placeholder="Masukkan password" autoComplete="off" />
-            )}
-          />
+          <Controller name="password" control={control} render={({ field }) => <input {...field} type="password" placeholder="Masukkan password" autoComplete="off" />} />
           <button type="button" className="input-action" aria-label="Tampilkan password" />
         </div>
         {errors.password && <div className="auth-error">{errors.password.message}</div>}

@@ -16,9 +16,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           <h1 className="brand-title">
             Trisula <span>Sport Club</span>
           </h1>
-          <p className="brand-subtitle">
-            Portal Akademik untuk pengelolaan data anggota, jadwal latihan, dan informasi kegiatan klub
-          </p>
+          <p className="brand-subtitle">Portal Akademik untuk pengelolaan data anggota, jadwal latihan, dan informasi kegiatan klub</p>
         </section>
 
         <section className="auth-panel">
