@@ -58,10 +58,14 @@ export default function useLogin() {
         router.push(callbackUrl);
       } else {
         // Redirect berdasarkan role dari backend
-        const role = data?.data?.role;
-        // TODO: Sesuaikan logika routing-mu di sini
-        if (role === "admin") {
-          router.push("/admin/dashboard");
+        const role = data?.data?.user.role;
+        console.log(data);
+        
+        console.log("role:", role);
+        if (role === "pengurus") {
+          router.push("/staff/dashboard");
+        } else if (role === "pelatih") {
+          router.push("/coach/dashboard");
         } else {
           router.push("/");
         }

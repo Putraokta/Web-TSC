@@ -4,90 +4,72 @@ import React from "react";
 import { Controller } from "react-hook-form";
 import useLogin from "@/hooks/useLogin";
 
-const formStyle: React.CSSProperties = {
-  maxWidth: 400,
-  margin: "0 auto",
-  padding: 20,
-  borderRadius: 8,
-  boxShadow: "0 0 10px rgba(0, 0, 0, 0.1)",
-  background: "#ffffff",
-};
-
-const headerStyle: React.CSSProperties = {
-  textAlign: "center",
-  marginBottom: 16,
-  color: "#333",
-};
-
-const errorStyle: React.CSSProperties = {
-  color: "red",
-  marginBottom: 8,
-  fontSize: "0.9em",
-};
-
-const inputGroupStyle: React.CSSProperties = {
-  marginBottom: 16,
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  marginBottom: 4,
-  fontWeight: "bold",
-};
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: 8,
-  border: "1px solid #ccc",
-  borderRadius: 4,
-  transition: "border 0.3s",
-};
-
-const buttonStyle: React.CSSProperties = {
-  width: "100%",
-  padding: 10,
-  border: "none",
-  borderRadius: 4,
-  backgroundColor: "#0070f3",
-  color: "white",
-  fontSize: 16,
-  cursor: "pointer",
-  transition: "background 0.3s",
-};
-
-const buttonDisabledStyle: React.CSSProperties = {
-  backgroundColor: "#ccc",
-};
-
 export default function LoginForm() {
   const { control, errors, handlerSignIn, isPendingSignIn } = useLogin();
 
   return (
-    <form onSubmit={handlerSignIn} style={formStyle}>
-      <h2 style={headerStyle}>Login</h2>
-      {errors.root && <div style={errorStyle}>{errors.root.message}</div>}
-
-      <div style={inputGroupStyle}>
-        <label style={labelStyle}>Username</label>
-        <Controller name="username" control={control} render={({ field }) => <input {...field} style={inputStyle} placeholder="Masukkan username" />} />
-        {errors.username && <div style={errorStyle}>{errors.username.message}</div>}
+    <form onSubmit={handlerSignIn} className="auth-form">
+      <div className="auth-form-header">
+        <h2>Selamat Datang</h2>
+        <p>Masuk ke portal akademik TSC</p>
       </div>
 
-      <div style={inputGroupStyle}>
-        <label style={labelStyle}>Password</label>
-        <Controller name="password" control={control} render={({ field }) => <input {...field} style={inputStyle} type="password" placeholder="Masukkan password" />} />
-        {errors.password && <div style={errorStyle}>{errors.password.message}</div>}
+      {errors.root && <div className="auth-error">{errors.root.message}</div>}
+
+      <div className="auth-field">
+        <label>Email atau Username</label>
+        <div className="input-shell">
+          <span className="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+              <circle cx="12" cy="7" r="4" />
+            </svg>
+          </span>
+          <Controller
+            name="username"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="text" placeholder="Masukkan email atau username" autoComplete="off"/>
+            )}
+          />
+        </div>
+        {errors.username && <div className="auth-error">{errors.username.message}</div>}
       </div>
 
-      <button
-        style={{
-          ...buttonStyle,
-          ...(isPendingSignIn ? buttonDisabledStyle : {}),
-        }}
-        type="submit"
-        disabled={isPendingSignIn}
-      >
-        {isPendingSignIn ? "Logging in..." : "Login"}
+      <div className="auth-field">
+        <label>Password</label>
+        <div className="input-shell">
+          <span className="input-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+            </svg>
+          </span>
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <input {...field} type="password" placeholder="Masukkan password" autoComplete="off" />
+            )}
+          />
+          <button type="button" className="input-action" aria-label="Tampilkan password" />
+        </div>
+        {errors.password && <div className="auth-error">{errors.password.message}</div>}
+      </div>
+
+      <div className="auth-options">
+        <label className="remember-me">
+          <input type="checkbox" />
+          <span>Ingat saya</span>
+        </label>
+        <a className="forgot-link" href="#">
+          Lupa password?
+        </a>
+      </div>
+
+      <button className="auth-submit" type="submit" disabled={isPendingSignIn}>
+        {isPendingSignIn ? "Masuk..." : "Masuk"}
+        <span aria-hidden="true">→</span>
       </button>
     </form>
   );

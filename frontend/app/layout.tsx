@@ -5,6 +5,8 @@ import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 import Header from "@/components/Header";
 import Providers from "./providers";
+import { cn } from "@/lib/utils";
+
 
 const inter = Inter({
   variable: "--font-inter",
@@ -22,7 +24,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+    <html lang="en" className={cn("h-full", "antialiased", inter.variable, "font-sans")}>
       <body className="min-h-full flex flex-col">
         <Providers>
           <Header />
