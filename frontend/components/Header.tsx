@@ -11,14 +11,14 @@ export default function Header() {
 
   return (
     <header style={{ width: "100%", padding: 12, display: "flex", justifyContent: "flex-end" }}>
-      {user ? (
+      {/* {user ? (
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <span>{user.name || user.username}</span>
           <LogoutButton />
         </div>
       ) : (
         pathname !== "/login" && <Link href="/login">Login</Link>
-      )}
+      )} */}
     </header>
   );
 }

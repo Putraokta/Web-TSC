@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation"
 import {
   LayoutDashboard,
   Users,
-  Calendar,
-  Trophy,
+  School,
+  PersonStanding,
   ClipboardList,
   Settings,
   LogOut,
@@ -39,27 +39,27 @@ const menuItems = [
   {
     title: "Dashboard",
     icon: LayoutDashboard,
-    href: "/dashboard",
+    href: "/staff/dashboard",
   },
   {
-    title: "Anggota",
+    title: "Pelatih",
     icon: Users,
-    href: "/dashboard/anggota",
+    href: "/staff/coach",
   },
   {
-    title: "Jadwal Latihan",
-    icon: Calendar,
-    href: "/dashboard/jadwal",
+    title: "Sekolah",
+    icon: School,
+    href: "/staff/school",
   },
   {
-    title: "Kejuaraan",
-    icon: Trophy,
-    href: "/dashboard/kejuaraan",
+    title: "Athlete",
+    icon: PersonStanding,
+    href: "/staff/athlete",
   },
   {
     title: "Laporan",
     icon: ClipboardList,
-    href: "/dashboard/laporan",
+    href: "/staff/laporan",
   },
 ]
 
@@ -75,13 +75,13 @@ export function DashboardSidebar() {
   const pathname = usePathname()
 
   return (
-    <Sidebar className="border-r border-border/50">
+    <Sidebar className="border-r border-border/50 ">
       <SidebarHeader className="p-4">
         <Link href="/dashboard" className="flex items-center gap-3">
           <div className="relative">
             <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full scale-150" />
             <Image
-              src="/images/logo.jpeg"
+              src="/logo.jpeg"
               alt="TSC Logo"
               width={48}
               height={48}
@@ -104,7 +104,7 @@ export function DashboardSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Menu Utama</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="space-y-5">
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
@@ -128,9 +128,9 @@ export function DashboardSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Sistem</SidebarGroupLabel>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="">
               {settingsItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
+                <SidebarMenuItem key={item.href} className="s">
                   <SidebarMenuButton
                     asChild
                     isActive={pathname === item.href}
