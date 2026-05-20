@@ -46,6 +46,16 @@ export default function SchoolPage() {
   const [email, setEmail] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState<ISchool | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const [editName, setEditName] = useState("");
+  const [editAddress, setEditAddress] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -156,8 +166,8 @@ export default function SchoolPage() {
               <TableHeader className="bg-muted/40">
                 <TableRow>
                   <TableHead>Nama Sekolah</TableHead>
-                  {/* <TableHead>Alamat</TableHead>
-                  <TableHead>No. Telepon</TableHead>
+                  <TableHead>Alamat</TableHead>
+                  {/* <TableHead>No. Telepon</TableHead>
                   <TableHead>Email</TableHead> */}
                   <TableHead className="w-[140px] text-center">
                     Aksi
@@ -191,11 +201,11 @@ export default function SchoolPage() {
                         {school.name}
                       </TableCell>
 
-                      {/* <TableCell>
+                      <TableCell>
                         {school.address || "-"}
                       </TableCell>
 
-                      <TableCell>
+                      {/* <TableCell>
                         {school.phone || "-"}
                       </TableCell>
 
@@ -208,6 +218,20 @@ export default function SchoolPage() {
                           <Button
                             size="icon"
                             variant="outline"
+                            onClick={async () => {
+                              setDetailLoading(true);
+                              setError(null);
+                              try {
+                                const res = await schoolService.get(school._id);
+                                const data = res?.data ?? res;
+                                setSelectedSchool(data);
+                                setDetailOpen(true);
+                              } catch (err: any) {
+                                setError(err?.message || "Gagal mengambil detail sekolah");
+                              } finally {
+                                setDetailLoading(false);
+                              }
+                            }}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -215,6 +239,15 @@ export default function SchoolPage() {
                           <Button
                             size="icon"
                             variant="secondary"
+                            onClick={() => {
+                              // open edit with prefills
+                              setSelectedSchool(school);
+                              setEditName(school.name || "");
+                              setEditAddress(school.address || "");
+                              // setEditPhone(school.phone || "");
+                              // setEditEmail(school.email || "");
+                              setEditOpen(true);
+                            }}
                           >
                             <Pencil className="w-4 h-4" />
                           </Button>
@@ -253,7 +286,7 @@ export default function SchoolPage() {
               />
             </div>
 
-            {/* <div className="space-y-2">
+          <div className="space-y-2">
               <label className="text-sm font-medium">
                 Alamat
               </label>
@@ -262,10 +295,11 @@ export default function SchoolPage() {
                 placeholder="Masukkan alamat sekolah"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                required
               />
             </div>
 
-            <div className="space-y-2">
+            {/* <div className="space-y-2">
               <label className="text-sm font-medium">
                 No. Telepon
               </label>
@@ -288,7 +322,7 @@ export default function SchoolPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
-            </div> */}
+            </div> */} 
 
             <DialogFooter className="pt-4">
               <Button
@@ -305,6 +339,106 @@ export default function SchoolPage() {
               >
                 {submitting ? "Menyimpan..." : "Simpan"}
               </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* DETAIL DIALOG */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{detailLoading ? "Memuat..." : selectedSchool?.name ?? "Detail Sekolah"}</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            <div>
+              <strong>Nama:</strong> {selectedSchool?.name ?? "-"}
+            </div>
+            <div>
+              <strong>Alamat:</strong> {selectedSchool?.address ?? "-"}
+            </div>
+            {/* <div>
+              <strong>Telepon:</strong> {selectedSchool?.phone ?? "-"}
+            </div>
+            <div>
+              <strong>Email:</strong> {selectedSchool?.email ?? "-"}
+            </div> */}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailOpen(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* EDIT DIALOG */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Ubah Sekolah</DialogTitle>
+          </DialogHeader>
+
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedSchool?._id) return;
+              setEditSubmitting(true);
+              setError(null);
+              if (!editAddress || typeof editAddress !== "string") {
+                setError("Alamat sekolah wajib diisi");
+                setEditSubmitting(false);
+                return;
+              }
+              try {
+                const payload: ICreateSchool = {
+                  name: editName,
+                  address: editAddress,
+                  phone: editPhone,
+                  email: editEmail,
+                };
+
+                const res = await schoolService.update(selectedSchool._id, payload);
+                const updated = res?.data ?? res;
+
+                setData((prev) => prev.map((s) => (s._id === updated._id ? updated : s)));
+                setEditOpen(false);
+                setSelectedSchool(null);
+                setEditName("");
+                setEditAddress("");
+                // setEditPhone("");
+                // setEditEmail("");
+              } catch (err: any) {
+                setError(err?.message || "Gagal memperbarui sekolah");
+              } finally {
+                setEditSubmitting(false);
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Nama Sekolah</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Alamat</label>
+              <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} />
+            </div>
+
+            {/* <div className="space-y-2">
+              <label className="text-sm font-medium">No. Telepon</label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Email</label>
+              <Input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} />
+            </div> */}
+
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
+              <Button type="submit" disabled={editSubmitting}>{editSubmitting ? "Menyimpan..." : "Simpan"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

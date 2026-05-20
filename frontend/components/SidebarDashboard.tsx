@@ -8,7 +8,8 @@ import {
   Users,
   School,
   PersonStanding,
-  ClipboardList,
+  Landmark,
+  Proportions,
   Settings,
   LogOut,
   ChevronDown,
@@ -57,17 +58,22 @@ const menuItems = [
     href: "/staff/athlete",
   },
   {
-    title: "Laporan",
-    icon: ClipboardList,
-    href: "/staff/laporan",
+    title: "Finance",
+    icon: Landmark,
+    href: "/staff/finance",
+  },
+  {
+    title: "Report Finance",
+    icon: Proportions,
+    href: "/staff/report",
   },
 ]
 
 const settingsItems = [
   {
-    title: "Pengaturan",
+    title: "Coach Settings",
     icon: Settings,
-    href: "/dashboard/pengaturan",
+    href: "/staff/settings",
   },
 ]
 

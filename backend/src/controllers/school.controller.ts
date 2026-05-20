@@ -6,7 +6,16 @@ import { error, pagination, success } from "../utils/response";
 export default {
     async createShool(req: IAuthRequest, res: Response) {
         try {
-            const result = await SchoolModel.create(req.body);
+            const { name, address } = req.body as { name?: any; address?: any };
+
+            if (!name || typeof name !== "string") {
+                return error(res, null, "Name is required and must be a string", 400);
+            }
+
+            const payload: any = { name };
+            if (address && typeof address === "string") payload.address = address;
+
+            const result = await SchoolModel.create(payload);
             success(res, result, "School created successfully");
         } catch (err) {
             error(res, err, "Failed to create school");
@@ -51,7 +60,13 @@ export default {
     async updateSchool(req: IAuthRequest, res: Response) {
         try {
             const { id } = req.params;
-            const result = await SchoolModel.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+            const { name, address } = req.body as { name?: any; address?: any };
+
+            const payload: any = {};
+            if (name && typeof name === "string") payload.name = name;
+            if (address && typeof address === "string") payload.address = address;
+
+            const result = await SchoolModel.findByIdAndUpdate(id, payload, { new: true, runValidators: true });
 
             if (!result) {
                 return error(res, null, "School not found", 404);
