@@ -4,6 +4,8 @@ import { error, success } from "../utils/response";
 import { nodeModuleNameResolver } from "typescript";
 import { get } from "mongoose";
 import UserModel from "../models/user.model";
+import CoachModel from "../models/coach.model";
+import { ROLES } from "../utils/contants";
 import { IAuthRequest } from "../utils/interfaces";
 import { TChangePassword, TRegister } from "../validators/auth.validate";
 
@@ -16,7 +18,7 @@ export default {
             httpOnly: true,
             secure: true,
             sameSite: 'none',
-            maxAge: 24 * 60 * 60 * 1000, // 24 hours
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (1 week)
         });
         success(res, { user, accessToken }, "Login successful");
     } catch (err) {
@@ -44,7 +46,20 @@ export default {
         if (!userid) {
             return error(res, null, "User not authenticated", 404);
         }
-        const userProfile = await UserModel.findById(userid).select("-password -__v");
+        
+        let userProfile = await UserModel.findById(userid).select("-password -__v");
+        
+        if (!userProfile) {
+            const coachProfile = await CoachModel.findById(userid).select("-password -__v");
+            if (coachProfile) {
+                const coachObj = coachProfile.toObject();
+                userProfile = {
+                    ...coachObj,
+                    role: ROLES.PELATIH,
+                } as any;
+            }
+        }
+
         if (!userProfile) {
             return error(res, null, "User not found", 404);
         }
@@ -78,6 +93,22 @@ export default {
         success(res, user, "User registered successfully");
     } catch (err) {
       error(res, err, "Register failed");
+    }
+ },
+
+ async coachLoginController(req: Request, res: Response) {
+    try {
+        const { user, accessToken } = await authService.coachLoginService(req.body);
+
+        res.cookie("token", accessToken, {
+            httpOnly: true,
+            secure: true,
+            sameSite: 'none',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days (1 week)
+        });
+        success(res, { user, accessToken }, "Login successful");
+    } catch (err) {
+      error(res, err, "Login failed");
     }
  },
 

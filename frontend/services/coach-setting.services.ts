@@ -4,6 +4,7 @@ import type { ICoach } from "@/types/Coach";
 
 export interface ICreateCoachPayload {
 	name: string;
+	password: string;
 	birthdate: string; // ISO date string (e.g. "1980-05-12")
 	schoolIds?: string[]; // array of school ids
 }

@@ -24,7 +24,76 @@ import {
 	DialogFooter,
 	DialogClose,
 } from "@/components/ui/dialog"
+import { cn } from "@/lib/utils"
 
+// ── Belt color badge helper ───────────────────────────────────────────────────
+const beltStyles: Record<string, string> = {
+	putih:    "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+	kuning:   "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300",
+	hijau:    "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+	biru:     "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+	merah:    "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+	hitam:    "bg-zinc-800 text-zinc-100 dark:bg-zinc-700 dark:text-zinc-100",
+}
+function BeltBadge({ belt }: { belt?: string | null }) {
+	if (!belt || belt === "-") return <span className="text-muted-foreground text-sm">—</span>
+	const key = belt.toLowerCase()
+	const style = beltStyles[key] ?? "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300"
+	return (
+		<span className={cn("inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium", style)}>
+			{belt}
+		</span>
+	)
+}
+
+// ── Initials avatar ───────────────────────────────────────────────────────────
+function InitialsAvatar({ name }: { name: string }) {
+	const initials = name
+		.split(" ")
+		.slice(0, 2)
+		.map((w) => w[0])
+		.join("")
+		.toUpperCase()
+	const hue = (name.charCodeAt(0) * 37 + name.charCodeAt(1) * 17) % 360
+	return (
+		<span
+			className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+			style={{ backgroundColor: `hsl(${hue},55%,48%)` }}
+			aria-hidden="true"
+		>
+			{initials}
+		</span>
+	)
+}
+
+// ── Skeleton rows ─────────────────────────────────────────────────────────────
+function SkeletonRows() {
+	return (
+		<>
+			{Array.from({ length: 5 }).map((_, i) => (
+				<TableRow key={i} className="hover:bg-transparent">
+					{Array.from({ length: 5 }).map((_, j) => (
+						<TableCell key={j}>
+							<div className="h-4 rounded-md bg-muted animate-pulse" style={{ width: j === 0 ? "60%" : j === 4 ? "48px" : "50%" }} />
+						</TableCell>
+					))}
+				</TableRow>
+			))}
+		</>
+	)
+}
+
+// ── Detail field row ──────────────────────────────────────────────────────────
+function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
+	return (
+		<div className="flex items-start justify-between gap-4 py-2.5 border-b border-border/50 last:border-0">
+			<span className="text-[13px] text-muted-foreground flex-shrink-0 w-28">{label}</span>
+			<span className="text-[13px] font-medium text-foreground text-right">{value}</span>
+		</div>
+	)
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AthletePage() {
 	const [athletes, setAthletes] = useState<IAthlete[]>([])
 	const [loading, setLoading] = useState(true)
@@ -36,7 +105,6 @@ export default function AthletePage() {
 			.list()
 			.then((res: any) => {
 				if (!mounted) return
-				// assume API returns array directly or { data }
 				const data = Array.isArray(res) ? res : res?.data ?? []
 				setAthletes(data)
 			})
@@ -67,88 +135,194 @@ export default function AthletePage() {
 	}
 
 	return (
-		<div className="space-y-4">
+		<div className="space-y-5 p-6">
+			{/* ── Page header ── */}
 			<div className="flex items-center justify-between">
-				<h2 className="text-lg font-semibold">Atlet</h2>
+				<div>
+					<h2 className="text-[18px] font-semibold tracking-tight text-foreground">Atlet</h2>
+					<p className="text-[13px] text-muted-foreground mt-0.5">
+						{!loading && `${athletes.length} atlet terdaftar`}
+					</p>
+				</div>
 			</div>
 
-			<div className="rounded-md border bg-card p-4">
-				{loading ? (
-					<div className="p-4">Memuat...</div>
-				) : athletes.length === 0 ? (
-					<div className="p-4">Tidak ada data atlet.</div>
-				) : (
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Nama</TableHead>
-								<TableHead>Tanggal Lahir</TableHead>
-								<TableHead>Sekolah</TableHead>
-								<TableHead>Sabuk</TableHead>
-								<TableHead>Aksi</TableHead>
+			{/* ── Table card ── */}
+			<div className="rounded-xl border border-border/50 bg-card overflow-hidden shadow-sm">
+				<Table>
+					<TableHeader>
+						<TableRow className="bg-muted/40 hover:bg-muted/40 border-b border-border/50">
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 pl-4 py-3">
+								Nama
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 py-3">
+								Tanggal Lahir
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 py-3">
+								Sekolah
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 py-3">
+								Sabuk
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 py-3 pr-4">
+								Aksi
+							</TableHead>
+						</TableRow>
+					</TableHeader>
+
+					<TableBody>
+						{loading ? (
+							<SkeletonRows />
+						) : athletes.length === 0 ? (
+							<TableRow className="hover:bg-transparent">
+								<TableCell colSpan={5} className="py-16 text-center">
+									<div className="flex flex-col items-center gap-2">
+										<div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+											<svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+												<path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+											</svg>
+										</div>
+										<p className="text-[13px] text-muted-foreground">Tidak ada data atlet.</p>
+									</div>
+								</TableCell>
 							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{athletes.map((a) => (
-								<TableRow key={a._id}>
-									<TableCell className="font-medium">{a.name}</TableCell>
-									<TableCell>
-										{a.birthdate
-											? new Date(a.birthdate).toLocaleDateString()
-											: "-"}
+						) : (
+							athletes.map((a) => (
+								<TableRow
+									key={a._id}
+									className="border-b border-border/40 hover:bg-muted/30 transition-colors duration-100"
+								>
+									{/* Name + avatar */}
+									<TableCell className="pl-4 py-3">
+										<div className="flex items-center gap-2.5">
+											<InitialsAvatar name={a.name} />
+											<span className="text-[13.5px] font-medium text-foreground">
+												{a.name}
+											</span>
+										</div>
 									</TableCell>
-									<TableCell>{(a.schools || []).length}</TableCell>
-									<TableCell>{a.belt ?? "-"}</TableCell>
-									<TableCell>
-										<Button size="sm" onClick={() => openDetail(a._id)}>
+
+									{/* Birthdate */}
+									<TableCell className="text-[13px] text-muted-foreground py-3">
+										{a.birthdate
+											? new Date(a.birthdate).toLocaleDateString("id-ID", {
+													day: "2-digit",
+													month: "short",
+													year: "numeric",
+											  })
+											: "—"}
+									</TableCell>
+
+									{/* Schools count */}
+									<TableCell className="py-3">
+										<span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+											<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+												<path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
+											</svg>
+											{(a.schools || []).length}
+										</span>
+									</TableCell>
+
+									{/* Belt */}
+									<TableCell className="py-3">
+										<BeltBadge belt={a.belt} />
+									</TableCell>
+
+									{/* Action */}
+									<TableCell className="pr-4 py-3">
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={() => openDetail(a._id)}
+											className="h-7 px-3 text-[12px] rounded-lg border-border/60 hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300 dark:hover:bg-violet-950/30 dark:hover:text-violet-300 dark:hover:border-violet-700 transition-colors"
+										>
 											Detail
 										</Button>
 									</TableCell>
 								</TableRow>
-							))}
-						</TableBody>
-					</Table>
-				)}
+							))
+						)}
+					</TableBody>
+				</Table>
 			</div>
 
+			{/* ── Detail Dialog ── */}
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>{detailLoading ? "Memuat..." : selected?.name ?? "Detail Atlet"}</DialogTitle>
-						<DialogDescription>
-							{detailLoading
-								? "Sedang mengambil data atlet..."
-								: selected
-								? `ID: ${selected._id}`
-								: "Tidak ada data"}
-						</DialogDescription>
+				<DialogContent className="rounded-2xl border border-border/50 shadow-xl max-w-sm p-0 overflow-hidden gap-0">
+					{/* Dialog header */}
+					<DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">
+						{detailLoading ? (
+							<>
+								<div className="h-5 w-36 rounded-md bg-muted animate-pulse mb-1" />
+								<div className="h-3.5 w-24 rounded-md bg-muted animate-pulse" />
+							</>
+						) : (
+							<>
+								<div className="flex items-center gap-3 mb-1">
+									{selected && <InitialsAvatar name={selected.name} />}
+									<DialogTitle className="text-[15px] font-semibold tracking-tight">
+										{selected?.name ?? "Detail Atlet"}
+									</DialogTitle>
+								</div>
+								<DialogDescription className="text-[12px] text-muted-foreground pl-11">
+									{selected ? `ID: ${selected._id}` : "Tidak ada data"}
+								</DialogDescription>
+							</>
+						)}
 					</DialogHeader>
 
-					<div className="grid gap-2">
+					{/* Dialog body */}
+					<div className="px-5 py-4">
 						{detailLoading ? (
-							<div>Memuat...</div>
+							<div className="space-y-3">
+								{Array.from({ length: 4 }).map((_, i) => (
+									<div key={i} className="flex justify-between py-2.5 border-b border-border/40">
+										<div className="h-3.5 w-20 rounded bg-muted animate-pulse" />
+										<div className="h-3.5 w-28 rounded bg-muted animate-pulse" />
+									</div>
+								))}
+							</div>
 						) : selected ? (
-							<div className="space-y-2">
-								<div>
-									<strong>Nama:</strong> {selected.name}
-								</div>
-								<div>
-									<strong>Tanggal Lahir:</strong>{" "}
-									{selected.birthdate ? new Date(selected.birthdate).toLocaleDateString() : "-"}
-								</div>
-								<div>
-									<strong>Sekolah:</strong> {(selected.schools || []).length}
-								</div>
-								<div>
-									<strong>Sabuk:</strong> {selected.belt ?? "-"}
-								</div>
+							<div>
+								<DetailRow label="Nama" value={selected.name} />
+								<DetailRow
+									label="Tanggal Lahir"
+									value={
+										selected.birthdate
+											? new Date(selected.birthdate).toLocaleDateString("id-ID", {
+													day: "2-digit",
+													month: "long",
+													year: "numeric",
+											  })
+											: "—"
+									}
+								/>
+								<DetailRow
+									label="Sekolah"
+									value={`${(selected.schools || []).length} sekolah`}
+								/>
+								<DetailRow
+									label="Sabuk"
+									value={<BeltBadge belt={selected.belt} />}
+								/>
 							</div>
 						) : (
-							<div>Tidak ada data</div>
+							<p className="text-[13px] text-muted-foreground text-center py-6">
+								Tidak ada data
+							</p>
 						)}
 					</div>
 
-					<DialogFooter showCloseButton />
+					<DialogFooter className="px-5 pb-5 pt-1">
+						<DialogClose asChild>
+							<Button
+								variant="outline"
+								size="sm"
+								className="w-full rounded-lg h-8 text-[13px] border-border/60"
+							>
+								Tutup
+							</Button>
+						</DialogClose>
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</div>

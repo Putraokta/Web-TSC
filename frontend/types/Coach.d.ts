@@ -2,6 +2,7 @@ export interface ICoach {
 	_id?: string;
 	user: string; // user id reference
 	name: string;
+	password?: string; // excluded from API response by default
 	birthdate: string | Date;
 	schools: string[]; // array of school ids
 	createdAt?: string;
@@ -11,6 +12,7 @@ export interface ICoach {
 export interface ICreateCoach {
 	user?: string;
 	name: string;
+	password: string;
 	birthdate: string | Date;
 	schools?: string[];
 }

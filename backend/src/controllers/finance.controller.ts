@@ -68,5 +68,32 @@ export default {
         }
     },
 
-    
+    async update(req: IAuthRequest, res: Response) {
+        try {
+            const { id } = req.params;
+            if (req.body.date) {
+                req.body.date = new Date(req.body.date);
+            }
+            const result = await FinanceModel.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+            if (!result) {
+                return error(res, null, "Finance not found", 404);
+            }
+            success(res, result, "Finance updated successfully");
+        } catch (err) {
+            error(res, err, "Failed to update finance");
+        }
+    },
+
+    async delete(req: IAuthRequest, res: Response) {
+        try {
+            const { id } = req.params;
+            const result = await FinanceModel.findByIdAndDelete(id);
+            if (!result) {
+                return error(res, null, "Finance not found", 404);
+            }
+            success(res, null, "Finance deleted successfully");
+        } catch (err) {
+            error(res, err, "Failed to delete finance");
+        }
+    },
 };

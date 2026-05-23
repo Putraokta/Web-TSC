@@ -11,8 +11,8 @@ import { ILogin } from "@/types/Auth";
 
 // Schema validasi dengan Yup (karena kamu menggunakan yup di package.json)
 const loginSchema = yup.object().shape({
-  username: yup.string().required("Username is required"),
-  password: yup.string().required("Password is required"),
+  username: yup.string().required("Username atau Nama wajib diisi"),
+  password: yup.string().required("Password wajib diisi"),
 });
 
 export default function useLogin() {

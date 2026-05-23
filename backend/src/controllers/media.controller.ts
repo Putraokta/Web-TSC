@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
-import {  error, success } from "../utils/response";
+import { error, success } from "../utils/response";
 import imageKitUtil from "../utils/uploader";
+import MediaModel from "../models/media.model";
+import { IAuthRequest } from "../utils/interfaces";
 
- export default {
+export default {
     async single(req: Request, res: Response) {
-
         if (!req.file) {
             return error(res, "No file uploaded", "No file uploaded");
         }
@@ -39,5 +40,92 @@ import imageKitUtil from "../utils/uploader";
         } catch (err) {
             error(res, err, "File removal failed");
         }
+    },
+
+    // ── Mongoose Media Metadata Operations ────────────────────────────────────────
+
+    async createMedia(req: IAuthRequest, res: Response) {
+        try {
+            if (!req.user || !req.user._id) {
+                return error(res, "Unauthorized", "Authentication required", 401);
+            }
+            const { title, type, url, fileId, athleteId, schoolId } = req.body;
+            if (!title || !type || !url || !fileId) {
+                return error(res, "Missing fields", "Title, type, url, and fileId are required", 400);
+            }
+
+            const mediaData: any = {
+                title,
+                type,
+                url,
+                fileId,
+                uploader: req.user._id,
+            };
+
+            if (athleteId) mediaData.athlete = athleteId;
+            if (schoolId) mediaData.school = schoolId;
+
+            const result = await MediaModel.create(mediaData);
+            const populatedResult = await MediaModel.findById(result._id)
+                .populate("athlete", "name")
+                .populate("school", "name")
+                .exec();
+
+            success(res, populatedResult, "Media metadata created successfully");
+        } catch (err) {
+            error(res, err, "Failed to save media metadata");
+        }
+    },
+
+    async listMedia(req: IAuthRequest, res: Response) {
+        try {
+            const { type, athleteId, schoolId, search } = req.query;
+            const query: any = { isActive: { $ne: false } };
+
+            if (type) query.type = type;
+            if (athleteId) query.athlete = athleteId;
+            if (schoolId) query.school = schoolId;
+            if (search) {
+                query.title = { $regex: search as string, $options: "i" };
+            }
+
+            const results = await MediaModel.find(query)
+                .populate("athlete", "name")
+                .populate("school", "name")
+                .sort({ createdAt: -1 })
+                .exec();
+
+            success(res, results, "Successfully retrieved media list");
+        } catch (err) {
+            error(res, err, "Failed to retrieve media list");
+        }
+    },
+
+    async deleteMedia(req: IAuthRequest, res: Response) {
+        try {
+            const { id } = req.params;
+            const media = await MediaModel.findById(id);
+
+            if (!media) {
+                return error(res, null, "Media not found", 404);
+            }
+
+            // 1. Remove physical file from ImageKit
+            if (media.fileId) {
+                try {
+                    await imageKitUtil.removeFile(media.fileId);
+                } catch (ikErr) {
+                    console.error("Failed to delete physical file from ImageKit:", ikErr);
+                    // Continue with database deletion even if physical deletion fails
+                }
+            }
+
+            // 2. Hard delete from database
+            await MediaModel.findByIdAndDelete(id);
+
+            success(res, null, "Media deleted successfully");
+        } catch (err) {
+            error(res, err, "Failed to delete media");
+        }
     }
-}
+};
