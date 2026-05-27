@@ -1,16 +1,27 @@
 "use client"
 
-import React from "react";
-import useAuth from "@/hooks/useAuth";
+import React, { useState } from "react";
+import authService from "@/services/auth.service";
+import { authKey } from "@/keys/auth.key";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 export default function LogoutButton({ children }: { children?: React.ReactNode }) {
-  const { logout, loading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(false);
 
   const handle = async () => {
-    await logout();
-    router.push("/login");
+    setLoading(true);
+    try {
+      await authService.logout();
+      queryClient.setQueryData(authKey.me(), null);
+      router.push("/login");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

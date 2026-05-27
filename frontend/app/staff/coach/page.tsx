@@ -237,16 +237,12 @@ export default function CoachPage() {
       setFormError("Pilih minimal satu sekolah binaan");
       return;
     }
-    if (password.length < 6) {
-      setFormError("Kata sandi minimal harus 6 karakter");
-      return;
-    }
 
     setSubmitting(true);
     try {
       const payload = {
         name: name.trim(),
-        password,
+        password: "pelatih123", // default password
         birthdate: new Date(birthdate),
         schoolIds: selectedSchoolIds,
       };
@@ -630,19 +626,7 @@ export default function CoachPage() {
               />
             </FormField>
 
-            <FormField label="Kata Sandi Akun">
-              <div className="relative">
-                <Input
-                  type="password"
-                  placeholder="Min. 6 karakter"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-8 pl-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-                />
-                <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-              </div>
-            </FormField>
+
 
             <FormField label="Tanggal Lahir">
               <Input

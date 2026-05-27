@@ -19,10 +19,13 @@ instance.interceptors.request.use((config) => {
       const match = document.cookie.match(new RegExp('(^|;)\\s*token\\s*=\\s*([^;]+)'));
       const token = match ? decodeURIComponent(match[2]) : null;
       if (token) {
-        config.headers = {
-          ...(config.headers || {}),
-          Authorization: `Bearer ${token}`,
-        } as Record<string, string>;
+        if (config.headers) {
+          config.headers.Authorization = `Bearer ${token}`;
+        } else {
+          config.headers = {
+            Authorization: `Bearer ${token}`,
+          } as any;
+        }
       }
     }
   } catch (e) {

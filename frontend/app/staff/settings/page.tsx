@@ -90,8 +90,6 @@ function SkeletonRows() {
               <div className="h-4 w-32 bg-muted rounded-md animate-pulse" />
             </div>
           </TableCell>
-          <TableCell className="py-4"><div className="h-4 w-28 bg-muted rounded-md animate-pulse" /></TableCell>
-          <TableCell className="py-4"><div className="h-4 w-36 bg-muted rounded-md animate-pulse" /></TableCell>
           <TableCell className="pr-5 py-4 text-center"><div className="h-7 w-24 bg-muted rounded-md animate-pulse mx-auto" /></TableCell>
         </TableRow>
       ))}
@@ -230,10 +228,6 @@ export default function SettingsPage() {
     e.preventDefault();
     setFormError(null);
 
-    if (selectedSchoolIds.length === 0) {
-      setFormError("Pilih minimal satu sekolah binaan");
-      return;
-    }
     if (password.length < 6) {
       setFormError("Kata sandi minimal harus 6 karakter");
       return;
@@ -244,8 +238,8 @@ export default function SettingsPage() {
       const payload = {
         name: name.trim(),
         password,
-        birthdate: new Date(birthdate),
-        schoolIds: selectedSchoolIds,
+        birthdate: new Date("2000-01-01"),
+        schoolIds: [schools[0]?._id].filter(Boolean),
       };
       const res = await coachService.create(payload);
       const created = res?.data ?? res;
@@ -268,10 +262,6 @@ export default function SettingsPage() {
     setFormError(null);
 
     if (!coachToEdit?._id) return;
-    if (selectedSchoolIds.length === 0) {
-      setFormError("Pilih minimal satu sekolah binaan");
-      return;
-    }
     if (password.length < 6) {
       setFormError("Kata sandi wajib diisi & minimal harus 6 karakter");
       return;
@@ -282,8 +272,8 @@ export default function SettingsPage() {
       const payload = {
         name: name.trim(),
         password,
-        birthdate: new Date(birthdate),
-        schoolIds: selectedSchoolIds,
+        birthdate: coachToEdit.birthdate ? new Date(coachToEdit.birthdate) : new Date("2000-01-01"),
+        schoolIds: coachToEdit.schools && coachToEdit.schools.length > 0 ? coachToEdit.schools : [schools[0]?._id].filter(Boolean),
       };
       const res = await coachService.update(coachToEdit._id, payload);
       const updated = res?.data ?? res;
@@ -385,14 +375,8 @@ export default function SettingsPage() {
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/40">
-                <TableHead className="pl-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-[35%]">
+                <TableHead className="pl-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-[85%]">
                   Nama Pelatih
-                </TableHead>
-                <TableHead className="py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-[20%]">
-                  Tanggal Lahir
-                </TableHead>
-                <TableHead className="py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 w-[30%]">
-                  Sekolah Binaan
                 </TableHead>
                 <TableHead className="pr-5 py-3.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 text-center w-[15%]">
                   Aksi
@@ -405,7 +389,7 @@ export default function SettingsPage() {
                 <SkeletonRows />
               ) : filteredCoaches.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={4} className="py-16 text-center">
+                  <TableCell colSpan={2} className="py-16 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
                         <UserIcon className="h-5 w-5 text-muted-foreground/40" />
@@ -429,38 +413,6 @@ export default function SettingsPage() {
                         <span className="text-[13.5px] font-medium text-foreground tracking-tight line-clamp-1">
                           {c.name}
                         </span>
-                      </div>
-                    </TableCell>
-
-                    {/* Birthdate */}
-                    <TableCell className="py-3 text-[13px] text-muted-foreground">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground/50" />
-                        {c.birthdate
-                          ? new Date(c.birthdate).toLocaleDateString("id-ID", {
-                              day: "2-digit",
-                              month: "short",
-                              year: "numeric",
-                            })
-                          : "—"}
-                      </div>
-                    </TableCell>
-
-                    {/* Schools Binaan badged */}
-                    <TableCell className="py-3">
-                      <div className="flex flex-wrap gap-1">
-                        {(c.schools || []).map((id) => (
-                          <span
-                            key={id}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium border bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-400 border-violet-200 dark:border-violet-900/50"
-                          >
-                            <SchoolIcon className="h-2.5 w-2.5" />
-                            {schoolMap.get(id) || "Sekolah"}
-                          </span>
-                        ))}
-                        {(c.schools || []).length === 0 && (
-                          <span className="text-muted-foreground/60 text-xs italic">—</span>
-                        )}
                       </div>
                     </TableCell>
 
@@ -535,36 +487,6 @@ export default function SettingsPage() {
             ) : selectedCoach ? (
               <div>
                 <DetailRow label="Nama Lengkap" value={selectedCoach.name} />
-                <DetailRow
-                  label="Tanggal Lahir"
-                  value={
-                    selectedCoach.birthdate
-                      ? new Date(selectedCoach.birthdate).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })
-                      : "—"
-                  }
-                />
-                <DetailRow
-                  label="Sekolah Binaan"
-                  value={
-                    <div className="flex flex-col items-end gap-1.5">
-                      {(selectedCoach.schools || []).map((id) => (
-                        <span
-                          key={id}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border bg-violet-50 text-violet-700 dark:bg-violet-950/20 dark:text-violet-400 border-violet-200 dark:border-violet-900/50"
-                        >
-                          {schoolMap.get(id) || "Sekolah"}
-                        </span>
-                      ))}
-                      {(selectedCoach.schools || []).length === 0 && (
-                        <span className="text-muted-foreground/60 text-xs italic">—</span>
-                      )}
-                    </div>
-                  }
-                />
               </div>
             ) : (
               <p className="text-[13px] text-muted-foreground text-center py-6">Tidak ada data</p>
@@ -641,40 +563,6 @@ export default function SettingsPage() {
               </div>
             </FormField>
 
-            <FormField label="Tanggal Lahir">
-              <Input
-                type="date"
-                value={birthdate}
-                onChange={(e) => setBirthdate(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-              />
-            </FormField>
-
-            {/* School selection */}
-            <FormField label="Sekolah Binaan (Pilih Sekolah)">
-              <div className="border border-border/60 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-muted/5">
-                {schools.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">Tidak ada sekolah terdaftar</p>
-                ) : (
-                  schools.map((sch) => (
-                    <label
-                      key={sch._id}
-                      className="flex items-center gap-2.5 text-[13px] text-foreground cursor-pointer hover:bg-muted/10 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSchoolIds.includes(sch._id!)}
-                        onChange={() => handleSchoolToggle(sch._id!)}
-                        className="rounded border-border/60 text-violet-600 focus:ring-violet-500/40"
-                      />
-                      <span>{sch.name}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </FormField>
-
             {formError && (
               <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-3 py-2 text-[12px] text-red-600 dark:text-red-400">
                 <X className="h-3.5 w-3.5 flex-shrink-0" />
@@ -737,40 +625,6 @@ export default function SettingsPage() {
                   className="h-8 pl-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
                 />
                 <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-              </div>
-            </FormField>
-
-            <FormField label="Tanggal Lahir">
-              <Input
-                type="date"
-                value={birthdate}
-                onChange={(e) => setBirthdate(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-              />
-            </FormField>
-
-            {/* School selection */}
-            <FormField label="Sekolah Binaan (Pilih Sekolah)">
-              <div className="border border-border/60 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2 bg-muted/5">
-                {schools.length === 0 ? (
-                  <p className="text-xs text-muted-foreground italic">Tidak ada sekolah terdaftar</p>
-                ) : (
-                  schools.map((sch) => (
-                    <label
-                      key={sch._id}
-                      className="flex items-center gap-2.5 text-[13px] text-foreground cursor-pointer hover:bg-muted/10 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSchoolIds.includes(sch._id!)}
-                        onChange={() => handleSchoolToggle(sch._id!)}
-                        className="rounded border-border/60 text-violet-600 focus:ring-violet-500/40"
-                      />
-                      <span>{sch.name}</span>
-                    </label>
-                  ))
-                )}
               </div>
             </FormField>
 

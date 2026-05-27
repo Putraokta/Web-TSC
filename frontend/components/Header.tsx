@@ -7,7 +7,7 @@ import useAuth from "@/hooks/useAuth";
 
 export default function Header() {
   const pathname = usePathname();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
 
   return (
     <header style={{ width: "100%", padding: 12, display: "flex", justifyContent: "flex-end" }}>

@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import LoginForm from "@/components/LoginForm";
 import Image from "next/image";
 
@@ -35,30 +36,15 @@ export default function Home() {
               Sistem informasi manajemen atlet, jadwal latihan, sekolah,
               prestasi, dan administrasi pencak silat Trisula Sport Club.
             </p>
-
-            {/* <div className="grid grid-cols-3 gap-4 pt-4">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-2xl font-bold text-white">100+</h3>
-                <p className="text-sm text-zinc-400">Atlet Aktif</p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-2xl font-bold text-white">25+</h3>
-                <p className="text-sm text-zinc-400">Kejuaraan</p>
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <h3 className="text-2xl font-bold text-white">10+</h3>
-                <p className="text-sm text-zinc-400">Pelatih</p>
-              </div>
-            </div> */}
           </div>
         </div>
 
         {/* RIGHT SIDE */}
         <div className="flex items-center justify-center p-6 md:p-10">
           <div className="w-full max-w-md">
-            <LoginForm />
+            <Suspense fallback={<div className="text-white/60 text-center text-sm">Loading...</div>}>
+              <LoginForm />
+            </Suspense>
           </div>
         </div>
       </div>

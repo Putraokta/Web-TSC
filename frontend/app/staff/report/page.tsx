@@ -121,32 +121,171 @@ export default function ReportPage() {
   const [report, setReport] = useState<IMonthlyReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
+  const [selectedPeriod, setSelectedPeriod] = useState(() => {
     const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
+
+  const fetchReport = React.useCallback((period: string, isMounted: () => boolean) => {
+    setLoading(true);
+    setError(null);
+    const [yearStr, monthStr] = period.split("-");
+    const year = Number(yearStr) || new Date().getFullYear();
+    const month = Number(monthStr) || (new Date().getMonth() + 1);
 
     reportService
       .monthly({ year, month })
       .then((res: any) => {
-        if (!mounted) return;
+        if (!isMounted()) return;
         const data: IMonthlyReport | undefined = res?.data;
         setReport(data ?? null);
       })
       .catch((err: any) => {
-        if (!mounted) return;
+        if (!isMounted()) return;
         setError(err?.message || "Gagal mengambil laporan");
       })
-      .finally(() => mounted && setLoading(false));
-
-    return () => { mounted = false; };
+      .finally(() => isMounted() && setLoading(false));
   }, []);
 
-  const now = new Date();
-  const bulan = now.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  useEffect(() => {
+    let mounted = true;
+    const isMounted = () => mounted;
+    fetchReport(selectedPeriod, isMounted);
+    return () => { mounted = false; };
+  }, [selectedPeriod, fetchReport]);
+
+  const handleRefresh = () => {
+    let mounted = true;
+    const isMounted = () => mounted;
+    fetchReport(selectedPeriod, isMounted);
+  };
+
+  const exportToPdf = async () => {
+    if (!report) return;
+
+    try {
+      const { jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(15, 23, 42); // #0f172a
+      doc.text("Trisula Sport Club", 14, 20);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(71, 85, 105); // #475569
+      doc.text("Laporan Keuangan Bulanan", 14, 28);
+      
+      // Period
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Periode: ${bulan.toUpperCase()}`, 14, 35);
+      
+      // Divider
+      doc.setDrawColor(226, 232, 240); // #e2e8f0
+      doc.line(14, 40, 196, 40);
+
+      // Financial Stats Summary Box
+      doc.setFillColor(248, 250, 252); // #f8fafc
+      doc.rect(14, 45, 182, 28, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139); // #64748b
+      
+      doc.text("TOTAL PEMASUKAN", 20, 52);
+      doc.text("TOTAL PENGELUARAN", 80, 52);
+      doc.text("NET BALANCE", 140, 52);
+
+      doc.setFontSize(14);
+      // Pemasukan (Green)
+      doc.setTextColor(21, 128, 61); // #15803d
+      doc.text(fmt(Number(report.income)), 20, 62);
+      
+      // Pengeluaran (Red)
+      doc.setTextColor(185, 28, 28); // #b91c1c
+      doc.text(fmt(Number(report.expense)), 80, 62);
+      
+      // Net (Blue/Green depending on sign)
+      const netVal = Number(report.net);
+      if (netVal >= 0) {
+        doc.setTextColor(29, 78, 216); // #1d4ed8
+      } else {
+        doc.setTextColor(185, 28, 28);
+      }
+      doc.text(fmt(netVal), 140, 62);
+
+      // Details Table
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Detail Transaksi", 14, 84);
+
+      const tableData = (report.details || []).map((d) => {
+        const dateStr = d.date ? fmtDate(d.date) : "—";
+        const typeLabel = d.type === "income" ? "PEMASUKAN" : "PENGELUARAN";
+        const amountSign = d.type === "expense" ? "-" : "+";
+        const amountStr = `${amountSign} ${fmt(Number(d.balance))}`;
+        return [typeLabel, amountStr, d.description || "—", dateStr];
+      });
+
+      autoTable(doc, {
+        startY: 88,
+        head: [["Tipe", "Jumlah", "Deskripsi", "Tanggal"]],
+        body: tableData,
+        theme: "striped",
+        headStyles: {
+          fillColor: [37, 99, 235], // Blue primary header #2563eb
+          fontSize: 9,
+          fontStyle: "bold",
+        },
+        bodyStyles: {
+          fontSize: 9,
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },
+          1: { cellWidth: 40, fontStyle: "bold" },
+          2: { cellWidth: "auto" },
+          3: { cellWidth: 30 },
+        },
+        didParseCell: (data) => {
+          // Color coding for amount column
+          if (data.column.index === 1 && data.cell.section === "body") {
+            const typeVal = data.row.cells[0].text[0]; // "PEMASUKAN" or "PENGELUARAN"
+            if (typeVal === "PEMASUKAN") {
+              data.cell.styles.textColor = [10, 185, 129]; // #0ab981
+            } else {
+              data.cell.styles.textColor = [239, 68, 68]; // #ef4444
+            }
+          }
+          if (data.column.index === 0 && data.cell.section === "body") {
+            const typeVal = data.cell.text[0];
+            if (typeVal === "PEMASUKAN") {
+              data.cell.styles.textColor = [21, 128, 61]; // #15803d
+            } else {
+              data.cell.styles.textColor = [185, 28, 28]; // #b91c1c
+            }
+          }
+        }
+      });
+
+      // Save document
+      const fileBulan = bulan.replace(/\s+/g, "_");
+      doc.save(`Laporan_Keuangan_${fileBulan}.pdf`);
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      alert("Gagal mengekspor PDF.");
+    }
+  };
+
+  const [yearStr, monthStr] = selectedPeriod.split("-");
+  const dateObj = new Date(Number(yearStr), Number(monthStr) - 1, 1);
+  const bulan = dateObj.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
   return (
     <>
@@ -186,10 +325,41 @@ export default function ReportPage() {
           transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
           box-shadow: 0 1px 3px rgba(0,0,0,0.06);
         }
-        .refresh-btn:hover {
+        .refresh-btn:hover:not(:disabled) {
           background: #f8fafc;
           border-color: #cbd5e1;
           box-shadow: 0 2px 6px rgba(0,0,0,0.09);
+        }
+        .refresh-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .export-pdf-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 20px;
+          border-radius: 10px;
+          font-size: 13px;
+          font-weight: 600;
+          font-family: 'DM Sans', sans-serif;
+          letter-spacing: 0.02em;
+          background: #16a34a;
+          border: 1px solid #16a34a;
+          color: #ffffff;
+          cursor: pointer;
+          transition: background 0.15s, border-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .export-pdf-btn:hover:not(:disabled) {
+          background: #15803d;
+          border-color: #15803d;
+          box-shadow: 0 2px 6px rgba(22,163,74,0.2);
+        }
+        .export-pdf-btn:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
         }
 
         .skeleton {
@@ -206,7 +376,7 @@ export default function ReportPage() {
 
       <div className="report-root">
         {/* ── Header ── */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 40 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 20, marginBottom: 40 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <div style={{ width: 4, height: 28, background: "linear-gradient(180deg, #16a34a, #2563eb)", borderRadius: 4 }} />
@@ -219,13 +389,46 @@ export default function ReportPage() {
             </p>
           </div>
 
-          <button className="refresh-btn" onClick={() => window.location.reload()}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-            Refresh
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            {/* Period Selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ffffff", border: "1px solid #e2e8f0", padding: "8px 16px", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
+              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em" }}>Periode:</span>
+              <input
+                type="month"
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                style={{
+                  border: "none",
+                  outline: "none",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: "#374151",
+                  fontFamily: "'DM Sans', sans-serif",
+                  cursor: "pointer",
+                  background: "transparent",
+                }}
+              />
+            </div>
+
+            {/* Export PDF Button */}
+            <button className="export-pdf-btn" onClick={exportToPdf} disabled={loading || !report}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export PDF
+            </button>
+
+            {/* Refresh Button */}
+            <button className="refresh-btn" onClick={handleRefresh} disabled={loading}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                <path d="M21 3v5h-5" />
+              </svg>
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* ── Stat Cards ── */}

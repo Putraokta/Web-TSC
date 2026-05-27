@@ -4,7 +4,9 @@ import React, { useEffect, useState } from "react"
 import Link from "next/link"
 
 import athleteService from "@/services/athlete.services"
+import schoolService from "@/services/school.services"
 import type { IAthlete } from "@/types/Athlete"
+import type { ISchool } from "@/types/School"
 
 import {
 	Table,
@@ -96,19 +98,33 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AthletePage() {
 	const [athletes, setAthletes] = useState<IAthlete[]>([])
+	const [schools, setSchools] = useState<ISchool[]>([])
 	const [loading, setLoading] = useState(true)
+
+	const schoolMap = React.useMemo(() => {
+		const map = new Map<string, string>()
+		schools.forEach((s) => map.set(s._id, s.name))
+		return map
+	}, [schools])
 
 	useEffect(() => {
 		let mounted = true
 		setLoading(true)
-		athleteService
-			.list()
-			.then((res: any) => {
+		Promise.all([
+			athleteService.list(),
+			schoolService.list({ limit: 1000 })
+		])
+			.then(([athleteRes, schoolRes]: any) => {
 				if (!mounted) return
-				const data = Array.isArray(res) ? res : res?.data ?? []
-				setAthletes(data)
+				const athleteData = Array.isArray(athleteRes) ? athleteRes : athleteRes?.data ?? []
+				const schoolData = Array.isArray(schoolRes) ? schoolRes : schoolRes?.data ?? []
+				setAthletes(athleteData)
+				setSchools(schoolData)
 			})
-			.catch(() => setAthletes([]))
+			.catch(() => {
+				setAthletes([])
+				setSchools([])
+			})
 			.finally(() => mounted && setLoading(false))
 
 		return () => {
@@ -212,14 +228,16 @@ export default function AthletePage() {
 											: "—"}
 									</TableCell>
 
-									{/* Schools count */}
-									<TableCell className="py-3">
-										<span className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
-											<svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+									{/* School Name */}
+									<TableCell className="py-3 text-[13px] text-muted-foreground">
+										<div className="flex items-center gap-1.5">
+											<svg className="h-3.5 w-3.5 text-muted-foreground/75 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
 												<path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0 0 12 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75Z" />
 											</svg>
-											{(a.schools || []).length}
-										</span>
+											<span className="font-medium truncate max-w-[170px]" title={a.schools?.map(id => schoolMap.get(id) || id).join(", ") || "—"}>
+												{a.schools?.map(id => schoolMap.get(id) || id).join(", ") || "—"}
+											</span>
+										</div>
 									</TableCell>
 
 									{/* Belt */}
@@ -298,7 +316,7 @@ export default function AthletePage() {
 								/>
 								<DetailRow
 									label="Sekolah"
-									value={`${(selected.schools || []).length} sekolah`}
+									value={selected.schools?.map(id => schoolMap.get(id) || id).join(", ") || "—"}
 								/>
 								<DetailRow
 									label="Sabuk"
