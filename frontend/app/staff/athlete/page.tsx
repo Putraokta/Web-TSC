@@ -68,6 +68,27 @@ function InitialsAvatar({ name }: { name: string }) {
 	)
 }
 
+// ── Profile Avatar ───────────────────────────────────────────────────────────
+function ProfileAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+	const [hasError, setHasError] = useState(false)
+
+	useEffect(() => {
+		setHasError(false)
+	}, [imageUrl])
+
+	if (imageUrl && !hasError) {
+		return (
+			<img
+				src={imageUrl}
+				alt={name}
+				className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full object-cover ring-1 ring-border shadow-inner"
+				onError={() => setHasError(true)}
+			/>
+		)
+	}
+	return <InitialsAvatar name={name} />
+}
+
 // ── Skeleton rows ─────────────────────────────────────────────────────────────
 function SkeletonRows() {
 	return (
@@ -210,7 +231,7 @@ export default function AthletePage() {
 									{/* Name + avatar */}
 									<TableCell className="pl-4 py-3">
 										<div className="flex items-center gap-2.5">
-											<InitialsAvatar name={a.name} />
+											<ProfileAvatar name={a.name} imageUrl={a.imageUrl} />
 											<span className="text-[13.5px] font-medium text-foreground">
 												{a.name}
 											</span>
@@ -276,7 +297,7 @@ export default function AthletePage() {
 						) : (
 							<>
 								<div className="flex items-center gap-3 mb-1">
-									{selected && <InitialsAvatar name={selected.name} />}
+									{selected && <ProfileAvatar name={selected.name} imageUrl={selected.imageUrl} />}
 									<DialogTitle className="text-[15px] font-semibold tracking-tight">
 										{selected?.name ?? "Detail Atlet"}
 									</DialogTitle>
@@ -322,6 +343,18 @@ export default function AthletePage() {
 									label="Sabuk"
 									value={<BeltBadge belt={selected.belt} />}
 								/>
+								{selected.imageUrl && (
+									<div className="pt-3 pb-1 flex justify-center">
+										<img
+											src={selected.imageUrl}
+											alt={selected.name}
+											className="h-24 w-24 rounded-lg object-cover ring-2 ring-violet-500/20 shadow-sm"
+											onError={(e) => {
+												e.currentTarget.style.display = "none";
+											}}
+										/>
+									</div>
+								)}
 							</div>
 						) : (
 							<p className="text-[13px] text-muted-foreground text-center py-6">

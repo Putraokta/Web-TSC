@@ -83,6 +83,27 @@ function InitialsAvatar({ name }: { name: string }) {
   );
 }
 
+// ── Profile Avatar ───────────────────────────────────────────────────────────
+function ProfileAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [imageUrl]);
+
+  if (imageUrl && !hasError) {
+    return (
+      <img
+        src={imageUrl}
+        alt={name}
+        className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full object-cover ring-1 ring-border shadow-inner"
+        onError={() => setHasError(true)}
+      />
+    );
+  }
+  return <InitialsAvatar name={name} />;
+}
+
 // ── Skeletons ────────────────────────────────────────────────────────────────
 function SkeletonRows() {
   return (
@@ -152,6 +173,7 @@ export default function CoachAthletePage() {
   const [newBelt, setNewBelt] = useState("putih");
   const [newSchoolId, setNewSchoolId] = useState("");
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [newImagePreview, setNewImagePreview] = useState("");
 
   // Form states (Edit)
   const [editName, setEditName] = useState("");
@@ -159,6 +181,7 @@ export default function CoachAthletePage() {
   const [editBelt, setEditBelt] = useState("");
   const [editSchoolId, setEditSchoolId] = useState("");
   const [editImageUrl, setEditImageUrl] = useState("");
+  const [editImagePreview, setEditImagePreview] = useState("");
 
   // Create school map for O(1) resolutions
   const schoolMap = useMemo(() => {
@@ -253,6 +276,7 @@ export default function CoachAthletePage() {
     setEditBelt((athlete.belt || "putih").toLowerCase());
     setEditSchoolId(athlete.schools?.[0] || "");
     setEditImageUrl(athlete.imageUrl || "");
+    setEditImagePreview(athlete.imageUrl || "");
     setEditOpen(true);
   };
 
@@ -277,9 +301,19 @@ export default function CoachAthletePage() {
         toast.success("Foto berhasil diunggah!");
       } else {
         toast.error("Gagal mengunggah foto.");
+        if (isEdit) {
+          setEditImagePreview(editImageUrl || "");
+        } else {
+          setNewImagePreview("");
+        }
       }
     } catch (err: any) {
       toast.error(err?.message || "Gagal mengunggah foto.");
+      if (isEdit) {
+        setEditImagePreview(editImageUrl || "");
+      } else {
+        setNewImagePreview("");
+      }
     } finally {
       setImageUploading(false);
     }
@@ -316,6 +350,7 @@ export default function CoachAthletePage() {
         setNewBelt("putih");
         setNewSchoolId("");
         setNewImageUrl("");
+        setNewImagePreview("");
       }
     } catch (err: any) {
       setError(err?.message || "Gagal membuat atlet");
@@ -559,7 +594,7 @@ export default function CoachAthletePage() {
                     {/* Avatar + Name */}
                     <TableCell className="pl-5 py-3">
                       <div className="flex items-center gap-3">
-                        <InitialsAvatar name={athlete.name} />
+                        <ProfileAvatar name={athlete.name} imageUrl={athlete.imageUrl} />
                         <span className="text-[13.5px] font-medium text-foreground">
                           {athlete.name}
                         </span>
@@ -706,12 +741,15 @@ export default function CoachAthletePage() {
             {/* Interactive Image Upload */}
             <FormField label="Foto Profil (JPG, PNG, WEBP)">
               <div className="flex items-center gap-4 p-3 border border-border/60 rounded-lg bg-background shadow-inner">
-                {newImageUrl ? (
+                {newImagePreview || newImageUrl ? (
                   <div className="relative h-12 w-12 rounded-lg overflow-hidden ring-1 ring-border group flex-shrink-0">
-                    <img src={newImageUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <img src={newImagePreview || newImageUrl} alt="Preview" className="h-full w-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => setNewImageUrl("")}
+                      onClick={() => {
+                        setNewImageUrl("");
+                        setNewImagePreview("");
+                      }}
                       className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white"
                     >
                       <X className="h-4 w-4" />
@@ -729,7 +767,14 @@ export default function CoachAthletePage() {
                     accept="image/jpeg,image/jpg,image/png,image/webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file, false);
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setNewImagePreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                        handleImageUpload(file, false);
+                      }
                     }}
                     disabled={imageUploading}
                     className="hidden"
@@ -845,12 +890,15 @@ export default function CoachAthletePage() {
             {/* Interactive Image Upload */}
             <FormField label="Foto Profil (JPG, PNG, WEBP)">
               <div className="flex items-center gap-4 p-3 border border-border/60 rounded-lg bg-background shadow-inner">
-                {editImageUrl ? (
+                {editImagePreview || editImageUrl ? (
                   <div className="relative h-12 w-12 rounded-lg overflow-hidden ring-1 ring-border group flex-shrink-0">
-                    <img src={editImageUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <img src={editImagePreview || editImageUrl} alt="Preview" className="h-full w-full object-cover" />
                     <button
                       type="button"
-                      onClick={() => setEditImageUrl("")}
+                      onClick={() => {
+                        setEditImageUrl("");
+                        setEditImagePreview("");
+                      }}
                       className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white"
                     >
                       <X className="h-4 w-4" />
@@ -868,7 +916,14 @@ export default function CoachAthletePage() {
                     accept="image/jpeg,image/jpg,image/png,image/webp"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) handleImageUpload(file, true);
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setEditImagePreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                        handleImageUpload(file, true);
+                      }
                     }}
                     disabled={imageUploading}
                     className="hidden"
@@ -923,7 +978,7 @@ export default function CoachAthletePage() {
               </div>
             ) : selectedAthlete ? (
               <div className="flex items-center gap-3">
-                <InitialsAvatar name={selectedAthlete.name} />
+                <ProfileAvatar name={selectedAthlete.name} imageUrl={selectedAthlete.imageUrl} />
                 <div>
                   <DialogTitle className="text-[15px] font-semibold tracking-tight">
                     {selectedAthlete.name}
