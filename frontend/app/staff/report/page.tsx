@@ -111,7 +111,7 @@ function Badge({ type }: { type: string }) {
       }}
     >
       <span style={{ fontSize: 8 }}>{isIncome ? "▲" : "▼"}</span>
-      {type}
+      {isIncome ? "Pemasukan" : "Pengeluaran"}
     </span>
   );
 }

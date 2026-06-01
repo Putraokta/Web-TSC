@@ -38,6 +38,7 @@ router.delete("/media/remove", authMiddleware.authorization, mediaController.rem
 
 router.post("/media", authMiddleware.authorization, mediaController.createMedia);
 router.get("/media", authMiddleware.authorization, mediaController.listMedia);
+router.put("/media/:id", authMiddleware.authorization, mediaController.updateMedia);
 router.delete("/media/:id", authMiddleware.authorization, mediaController.deleteMedia);
 
 router.post("/coaches", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS]), validate(coachValidate)], coachController.create);

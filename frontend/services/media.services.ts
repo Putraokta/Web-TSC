@@ -20,6 +20,9 @@ const mediaService = {
   createMedia: (payload: any) =>
     instance.post(`${endpoint.MEDIA}`, payload).then((res) => res.data),
 
+  updateMedia: (id: string, payload: any) =>
+    instance.put(`${endpoint.MEDIA}/${id}`, payload).then((res) => res.data),
+
   deleteMedia: (id: string) =>
     instance.delete(`${endpoint.MEDIA}/${id}`).then((res) => res.data),
 };

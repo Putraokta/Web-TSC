@@ -127,5 +127,51 @@ export default {
         } catch (err) {
             error(res, err, "Failed to delete media");
         }
+    },
+
+    async updateMedia(req: IAuthRequest, res: Response) {
+        try {
+            const { id } = req.params;
+            const { title, type, url, fileId, athleteId, schoolId } = req.body;
+            const media = await MediaModel.findById(id);
+
+            if (!media) {
+                return error(res, null, "Media not found", 404);
+            }
+
+            if (title) media.title = title;
+            if (type) media.type = type;
+
+            if (url) media.url = url;
+            if (fileId) {
+                if (media.fileId && media.fileId !== fileId) {
+                    try {
+                        await imageKitUtil.removeFile(media.fileId);
+                    } catch (ikErr) {
+                        console.error("Failed to delete old file from ImageKit:", ikErr);
+                    }
+                }
+                media.fileId = fileId;
+            }
+
+            if (type === "sertifikat") {
+                media.athlete = athleteId || null;
+                media.school = null;
+            } else if (type === "latihan") {
+                media.school = schoolId || null;
+                media.athlete = null;
+            }
+
+            await media.save();
+
+            const populatedResult = await MediaModel.findById(id)
+                .populate("athlete", "name")
+                .populate("school", "name")
+                .exec();
+
+            success(res, populatedResult, "Media metadata updated successfully");
+        } catch (err) {
+            error(res, err, "Failed to update media metadata");
+        }
     }
 };

@@ -156,7 +156,7 @@ export default function FinancePage() {
     let mounted = true;
     setLoading(true);
     financeService
-      .list()
+      .list({ limit: 1000 })
       .then((res: any) => {
         if (!mounted) return;
         const data = Array.isArray(res) ? res : res?.data ?? [];
@@ -176,6 +176,7 @@ export default function FinancePage() {
   const [type, setType] = useState<"income" | "expense">("income");
   const [balance, setBalance] = useState<string>("");
   const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -199,6 +200,7 @@ export default function FinancePage() {
   const [editType, setEditType] = useState<"income" | "expense">("income");
   const [editBalance, setEditBalance] = useState<string>("");
   const [editDescription, setEditDescription] = useState("");
+  const [editDate, setEditDate] = useState("");
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
@@ -213,6 +215,12 @@ export default function FinancePage() {
     setEditType(finance.type as "income" | "expense");
     setEditBalance(finance.balance.toString());
     setEditDescription(finance.description || "");
+    if (finance.date) {
+      const d = new Date(finance.date);
+      setEditDate(d.toISOString().split("T")[0]);
+    } else {
+      setEditDate(new Date().toISOString().split("T")[0]);
+    }
     setEditFormError(null);
     setShowEdit(true);
   };
@@ -236,7 +244,14 @@ export default function FinancePage() {
         </div>
         <Button
           size="sm"
-          onClick={() => setShowCreate(true)}
+          onClick={() => {
+            setType("income");
+            setBalance("");
+            setDescription("");
+            setDate(new Date().toISOString().split("T")[0]);
+            setFormError(null);
+            setShowCreate(true);
+          }}
           className="gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
         >
           <Plus className="h-3.5 w-3.5" />
@@ -322,10 +337,10 @@ export default function FinancePage() {
                   <TableCell className="py-3 text-[13px] text-muted-foreground">
                     {f.date
                       ? new Date(f.date).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })
                       : "—"}
                   </TableCell>
 
@@ -423,6 +438,18 @@ export default function FinancePage() {
                   }
                 />
                 <DetailRow label="Deskripsi" value={selected.description} />
+                <DetailRow
+                  label="Tanggal"
+                  value={
+                    selected.date
+                      ? new Date(selected.date).toLocaleDateString("id-ID", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                        })
+                      : "—"
+                  }
+                />
               </>
             ) : (
               <p className="text-[13px] text-muted-foreground text-center py-6">Tidak ada data</p>
@@ -485,7 +512,12 @@ export default function FinancePage() {
               }
               setSubmitting(true);
               try {
-                const payload = { type, balance: Number(balance), description };
+                const payload = { 
+                  type, 
+                  balance: Number(balance), 
+                  description,
+                  date: date ? new Date(date) : undefined
+                };
                 const res = await financeService.create(payload);
                 const created = res?.data ?? res;
                 if (created) setItems((prev) => [created, ...prev]);
@@ -493,6 +525,7 @@ export default function FinancePage() {
                 setType("income");
                 setBalance("");
                 setDescription("");
+                setDate("");
               } catch (err: any) {
                 setFormError(err?.message || "Gagal menyimpan data");
               } finally {
@@ -533,6 +566,16 @@ export default function FinancePage() {
                 onChange={(e) => setBalance(e.target.value)}
                 required
                 placeholder="0"
+                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+              />
+            </FormField>
+
+            <FormField label="Tanggal Transaksi">
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
                 className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
               />
             </FormField>
@@ -597,7 +640,12 @@ export default function FinancePage() {
               }
               setEditSubmitting(true);
               try {
-                const payload = { type: editType, balance: Number(editBalance), description: editDescription };
+                const payload = { 
+                  type: editType, 
+                  balance: Number(editBalance), 
+                  description: editDescription,
+                  date: editDate ? new Date(editDate) : undefined
+                };
                 const res = await financeService.update(editId, payload);
                 const updated = res?.data ?? res;
                 if (updated) {
@@ -646,6 +694,16 @@ export default function FinancePage() {
                 onChange={(e) => setEditBalance(e.target.value)}
                 required
                 placeholder="0"
+                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+              />
+            </FormField>
+
+            <FormField label="Tanggal Transaksi">
+              <Input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                required
                 className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
               />
             </FormField>

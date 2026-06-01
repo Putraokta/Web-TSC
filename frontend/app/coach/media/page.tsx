@@ -35,6 +35,7 @@ import {
   X,
   Eye,
   Trash2,
+  Pencil,
   SlidersHorizontal,
   FolderOpen,
   FileText,
@@ -124,6 +125,7 @@ export default function CoachMediaPage() {
 
   // Modals state
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<IMedia | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -136,6 +138,14 @@ export default function CoachMediaPage() {
   const [newSchoolId, setNewSchoolId] = useState("");
   const [uploadedUrl, setUploadedUrl] = useState("");
   const [uploadedFileId, setUploadedFileId] = useState("");
+
+  // Form states (Edit)
+  const [editTitle, setEditTitle] = useState("");
+  const [editType, setEditType] = useState<"sertifikat" | "latihan">("sertifikat");
+  const [editAthleteId, setEditAthleteId] = useState("");
+  const [editSchoolId, setEditSchoolId] = useState("");
+  const [editUploadedUrl, setEditUploadedUrl] = useState("");
+  const [editUploadedFileId, setEditUploadedFileId] = useState("");
 
   // Load Initial Data
   const loadData = async () => {
@@ -191,7 +201,7 @@ export default function CoachMediaPage() {
   }, [mediaList, searchQuery, selectedTypeTab, selectedAthleteFilter, selectedSchoolFilter]);
 
   // Handle file upload
-  const handleFileUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, isEdit: boolean = false) => {
     setFileUploading(true);
     try {
       const res = await mediaService.uploadSingle(file);
@@ -199,8 +209,13 @@ export default function CoachMediaPage() {
       const fileId = res?.data?.fileId ?? res?.fileId;
 
       if (url && fileId) {
-        setUploadedUrl(url);
-        setUploadedFileId(fileId);
+        if (isEdit) {
+          setEditUploadedUrl(url);
+          setEditUploadedFileId(fileId);
+        } else {
+          setUploadedUrl(url);
+          setUploadedFileId(fileId);
+        }
         toast.success("Berkas berhasil diunggah!");
       } else {
         toast.error("Format respons pengunggahan tidak valid.");
@@ -256,6 +271,57 @@ export default function CoachMediaPage() {
       }
     } catch (err: any) {
       toast.error(err?.message || "Gagal menyimpan berkas media.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Open edit dialog
+  const openEdit = (media: IMedia) => {
+    setSelectedMedia(media);
+    setEditTitle(media.title);
+    setEditType(media.type);
+    setEditAthleteId(media.athlete?._id || "");
+    setEditSchoolId(media.school?._id || "");
+    setEditUploadedUrl(media.url || "");
+    setEditUploadedFileId(media.fileId || "");
+    setEditOpen(true);
+  };
+
+  // Submit Edit Media Record
+  const handleEditMedia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedMedia?._id) return;
+    if (!editUploadedUrl || !editUploadedFileId) {
+      toast.warn("Harap unggah berkas terlebih dahulu.");
+      return;
+    }
+    if (editType === "latihan" && !editSchoolId) {
+      toast.warn("Harap pilih sekolah untuk gambar latihan.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        title: editTitle.trim(),
+        type: editType,
+        url: editUploadedUrl,
+        fileId: editUploadedFileId,
+        athleteId: editType === "sertifikat" && editAthleteId ? editAthleteId : undefined,
+        schoolId: editType === "latihan" ? editSchoolId : undefined,
+      };
+
+      const res = await mediaService.updateMedia(selectedMedia._id, payload);
+      const updated = res?.data ?? res;
+
+      if (updated) {
+        setMediaList((prev) => prev.map((m) => (m._id === selectedMedia._id ? updated : m)));
+        toast.success("Media berhasil diperbarui.");
+        setEditOpen(false);
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Gagal memperbarui berkas media.");
     } finally {
       setSubmitting(false);
     }
@@ -550,6 +616,15 @@ export default function CoachMediaPage() {
                           <ExternalLink className="h-3.5 w-3.5" />
                         </a>
 
+                        {/* Edit Button */}
+                        <button
+                          title="Ubah Media"
+                          onClick={() => openEdit(media)}
+                          className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-amber-600 hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/30 dark:hover:border-amber-700 dark:hover:text-amber-400 transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+
                         {/* Delete */}
                         <button
                           title="Hapus Media"
@@ -720,6 +795,163 @@ export default function CoachMediaPage() {
                 className="flex-1 h-8.5 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
               >
                 {submitting ? "Menyimpan..." : "Simpan Berkas"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Edit Dialog ── */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl border border-border/50 shadow-xl p-0 gap-0 overflow-hidden bg-background">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/40">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center flex-shrink-0">
+                <Pencil className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-[15px] font-semibold">Ubah Berkas Media</DialogTitle>
+                <DialogDescription className="text-[11.5px] text-muted-foreground">
+                  Ubah informasi berkas sertifikat atlet atau dokumentasi latihan sekolah
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleEditMedia} className="px-6 py-5 space-y-4">
+            {/* Title field */}
+            <FormField label="Nama / Judul Berkas">
+              <Input
+                placeholder="Masukkan judul berkas (contoh: Sertifikat Kejurda U-17)"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                required
+                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+              />
+            </FormField>
+
+            {/* Media Type Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Kategori Berkas">
+                <select
+                  value={editType}
+                  onChange={(e) => {
+                    const val = e.target.value as "sertifikat" | "latihan";
+                    setEditType(val);
+                    setEditAthleteId("");
+                    setEditSchoolId("");
+                  }}
+                  required
+                  className="h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none"
+                >
+                  <option value="sertifikat">Sertifikat Atlet</option>
+                  <option value="latihan">Gambar Latihan</option>
+                </select>
+              </FormField>
+
+              {/* Conditional dropdowns based on media type */}
+              {editType === "sertifikat" ? (
+                <FormField label="Untuk Atlet (Opsional)">
+                  <select
+                    value={editAthleteId}
+                    onChange={(e) => setEditAthleteId(e.target.value)}
+                    className="h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none"
+                  >
+                    <option value="">Pilih Atlet (Bisa dikosongkan)</option>
+                    {athletes.map((a) => (
+                      <option key={a._id} value={a._id}>
+                        {a.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              ) : (
+                <FormField label="Untuk Sekolah (Wajib)">
+                  <select
+                    value={editSchoolId}
+                    onChange={(e) => setEditSchoolId(e.target.value)}
+                    required
+                    className="h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none"
+                  >
+                    <option value="">Pilih Sekolah</option>
+                    {schools.map((sch) => (
+                      <option key={sch._id} value={sch._id}>
+                        {sch.name}
+                      </option>
+                    ))}
+                  </select>
+                </FormField>
+              )}
+            </div>
+
+            {/* Premium Upload Container */}
+            <FormField label="Ganti File (Opsional)">
+              <div className="flex flex-col items-center justify-center p-4 border border-dashed border-border/80 hover:border-violet-400 rounded-xl bg-muted/15 hover:bg-muted/20 transition-all duration-150 relative">
+                {editUploadedUrl ? (
+                  <div className="flex items-center gap-3 w-full p-2 bg-background border border-border/60 rounded-lg relative group">
+                    <MediaPreview url={editUploadedUrl} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-semibold text-foreground truncate">{editTitle || "Berkas Terunggah"}</p>
+                      <p className="text-[10px] text-violet-600 dark:text-violet-400 truncate">Unggah berhasil</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditUploadedUrl("");
+                        setEditUploadedFileId("");
+                      }}
+                      className="h-6 w-6 rounded-md bg-muted hover:bg-red-50 hover:text-red-600 flex items-center justify-center text-muted-foreground transition-all flex-shrink-0"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="h-10 w-10 rounded-full bg-violet-50 dark:bg-violet-950/20 flex items-center justify-center text-violet-600 dark:text-violet-400 mb-2">
+                      <Sparkles className="h-5 w-5 animate-pulse" />
+                    </div>
+                    <p className="text-[11.5px] font-semibold text-foreground">Satu klik untuk mengunggah berkas baru</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">JPEG, PNG, WEBP, atau PDF (Maks. 2MB)</p>
+
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,application/pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file, true);
+                      }}
+                      disabled={fileUploading}
+                      className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                    />
+                  </>
+                )}
+
+                {/* Progress blocker */}
+                {fileUploading && (
+                  <div className="absolute inset-0 bg-background/80 rounded-xl flex flex-col items-center justify-center gap-2 z-10">
+                    <div className="h-5 w-5 rounded-full border-2 border-violet-600 border-t-transparent animate-spin" />
+                    <span className="text-[11px] font-medium text-violet-600 dark:text-violet-400">Mengunggah ke server...</span>
+                  </div>
+                )}
+              </div>
+            </FormField>
+
+            {/* Action buttons */}
+            <div className="flex gap-3 pt-3 border-t border-border/40">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditOpen(false)}
+                className="flex-1 h-8.5 text-[13px] rounded-lg border-border/60"
+              >
+                Batal
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting || fileUploading}
+                className="flex-1 h-8.5 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
+              >
+                {submitting ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>
             </div>
           </form>
