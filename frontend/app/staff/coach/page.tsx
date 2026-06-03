@@ -1,11 +1,17 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import coachService from "@/services/coach.services";
-import schoolService from "@/services/school.services";
+import React, { useState, useMemo } from "react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  useCoaches,
+  useCoachDetail,
+  useCreateCoachForm,
+  useUpdateCoach,
+  useDeleteCoach,
+  useSchoolMap,
+} from "@/hooks/useCoach";
 import type { ICoach } from "@/types/Coach";
 import type { ISchool } from "@/types/School";
-import { toast } from "react-toastify";
 
 import {
   Table,
@@ -101,64 +107,44 @@ function SkeletonRows() {
   );
 }
 
+const PAGE_SIZE = 10;
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function CoachPage() {
-  // Main states
-  const [coaches, setCoaches] = useState<ICoach[]>([]);
-  const [schools, setSchools] = useState<ISchool[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ── TanStack React Query hooks ──
+  const { data: coaches = [], isLoading: loading } = useCoaches();
+  const { schools, schoolMap } = useSchoolMap();
+  const updateCoach = useUpdateCoach();
+  const deleteCoach = useDeleteCoach();
+
+  // ── Local UI states ──
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modals visibility states
   const [showDetail, setShowDetail] = useState(false);
-  const [selectedCoach, setSelectedCoach] = useState<ICoach | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailCoachId, setDetailCoachId] = useState<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
 
   // Selected for Edit/Delete
   const [coachToEdit, setCoachToEdit] = useState<ICoach | null>(null);
   const [coachToDelete, setCoachToDelete] = useState<ICoach | null>(null);
 
-  // Form states
+  // Form states (for Edit)
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [birthdate, setBirthdate] = useState("");
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
 
-  // Load coaches & schools
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [coachRes, schoolRes] = await Promise.all([
-        coachService.list(),
-        schoolService.list({ limit: 1000 }),
-      ]);
-      setCoaches(coachRes?.data ?? coachRes ?? []);
-      setSchools(schoolRes?.data ?? schoolRes ?? []);
-    } catch (err: any) {
-      setError(err?.message || "Gagal mengambil data pelatih atau sekolah.");
-      toast.error("Gagal memuat data dari server.");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { form: createForm, onSubmit: onCreateSubmit, isPending: isCreatePending } = useCreateCoachForm(() => setShowCreate(false));
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  // Map school ID to name helper
-  const schoolMap = useMemo(() => {
-    return new Map(schools.map((s) => [s._id, s.name]));
-  }, [schools]);
+  // ── Detail query (enabled only when detailCoachId is set) ──
+  const { data: selectedCoach = null, isLoading: detailLoading } = useCoachDetail(detailCoachId);
 
   // Filtered coaches
   const filteredCoaches = useMemo(() => {
@@ -167,6 +153,16 @@ export default function CoachPage() {
     return coaches.filter((c) => (c.name || "").toLowerCase().includes(q));
   }, [coaches, searchQuery]);
 
+  // Paginated coaches
+  const totalPages = Math.ceil(filteredCoaches.length / PAGE_SIZE);
+  const paginatedCoaches = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredCoaches.slice(start, start + PAGE_SIZE);
+  }, [filteredCoaches, currentPage]);
+
+  // Reset page when search changes
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery]);
+
   // Toggle school selection helper
   const handleSchoolToggle = (schoolId: string) => {
     setSelectedSchoolIds((prev) =>
@@ -174,31 +170,19 @@ export default function CoachPage() {
     );
   };
 
+  // Submitting state derived from mutations
+  const submitting = updateCoach.isPending || deleteCoach.isPending;
+
   // Open Detail modal
   const openDetail = (id: string) => {
-    setSelectedCoach(null);
+    setDetailCoachId(id);
     setShowDetail(true);
-    setDetailLoading(true);
-    coachService
-      .get(id)
-      .then((res: any) => {
-        const data = res?.data ?? (Array.isArray(res) ? res[0] : res);
-        setSelectedCoach(data);
-      })
-      .catch(() => {
-        toast.error("Gagal memuat detail pelatih.");
-        setShowDetail(false);
-      })
-      .finally(() => setDetailLoading(false));
   };
 
   // Open Create Modal
   const openCreate = () => {
-    setName("");
-    setPassword("");
-    setBirthdate("");
-    setSelectedSchoolIds([]);
-    setFormError(null);
+    createForm.reset();
+    createForm.setValue("password", "pelatih123");
     setShowCreate(true);
   };
 
@@ -228,39 +212,6 @@ export default function CoachPage() {
     setShowDelete(true);
   };
 
-  // Handle Create Submit
-  const handleCreateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError(null);
-
-    if (selectedSchoolIds.length === 0) {
-      setFormError("Pilih minimal satu sekolah binaan");
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        name: name.trim(),
-        password: "pelatih123", // default password
-        birthdate: new Date(birthdate),
-        schoolIds: selectedSchoolIds,
-      };
-      const res = await coachService.create(payload);
-      const created = res?.data ?? res;
-      if (created) {
-        setCoaches((prev) => [created, ...prev]);
-        toast.success("Pelatih berhasil ditambahkan.");
-        setShowCreate(false);
-      }
-    } catch (err: any) {
-      setFormError(err?.message || "Gagal menyimpan data pelatih.");
-      toast.error("Gagal menambahkan pelatih.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   // Handle Edit Submit
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,45 +227,36 @@ export default function CoachPage() {
       return;
     }
 
-    setSubmitting(true);
-    try {
-      const payload = {
-        name: name.trim(),
-        password,
-        birthdate: new Date(birthdate),
-        schoolIds: selectedSchoolIds,
-      };
-      const res = await coachService.update(coachToEdit._id, payload);
-      const updated = res?.data ?? res;
-      if (updated) {
-        setCoaches((prev) =>
-          prev.map((c) => (c._id === coachToEdit._id ? updated : c))
-        );
-        toast.success("Data pelatih berhasil diperbarui.");
-        setShowEdit(false);
+    updateCoach.mutate(
+      {
+        id: coachToEdit._id,
+        payload: {
+          name: name.trim(),
+          password,
+          birthdate: new Date(birthdate),
+          schoolIds: selectedSchoolIds,
+        },
+      },
+      {
+        onSuccess: () => {
+          setShowEdit(false);
+        },
+        onError: (err: any) => {
+          setFormError(err?.message || "Gagal menyimpan perubahan.");
+        },
       }
-    } catch (err: any) {
-      setFormError(err?.message || "Gagal menyimpan perubahan.");
-      toast.error("Gagal memperbarui pelatih.");
-    } finally {
-      setSubmitting(false);
-    }
+    );
   };
 
   // Handle Delete Confirm
   const handleDeleteConfirm = async () => {
     if (!coachToDelete?._id) return;
-    setSubmitting(true);
-    try {
-      await coachService.remove(coachToDelete._id);
-      setCoaches((prev) => prev.filter((c) => c._id !== coachToDelete._id));
-      toast.success("Pelatih berhasil dihapus.");
-      setShowDelete(false);
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal menghapus data pelatih.");
-    } finally {
-      setSubmitting(false);
-    }
+
+    deleteCoach.mutate(coachToDelete._id, {
+      onSuccess: () => {
+        setShowDelete(false);
+      },
+    });
   };
 
   return (
@@ -365,7 +307,7 @@ export default function CoachPage() {
             <Input
               placeholder="Cari nama pelatih..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
               className="pl-8 h-8 text-[13px] bg-background border-border/60 rounded-lg focus-visible:ring-1 focus-visible:ring-violet-500/40"
             />
             {searchQuery && (
@@ -416,7 +358,7 @@ export default function CoachPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredCoaches.map((c) => (
+                paginatedCoaches.map((c) => (
                   <TableRow
                     key={c._id}
                     className="border-b border-border/40 hover:bg-muted/25 transition-colors duration-100"
@@ -495,10 +437,19 @@ export default function CoachPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredCoaches.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* ── Detail Dialog ── */}
-      <Dialog open={showDetail} onOpenChange={setShowDetail}>
+      <Dialog open={showDetail} onOpenChange={(open) => { setShowDetail(open); if (!open) setDetailCoachId(null); }}>
         <DialogContent className="sm:max-w-sm rounded-2xl border border-border/50 shadow-xl p-0 gap-0 overflow-hidden bg-background">
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">
             {detailLoading ? (
@@ -615,27 +566,31 @@ export default function CoachPage() {
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleCreateSubmit} className="px-6 py-5 space-y-4">
+          <form onSubmit={onCreateSubmit} className="px-6 py-5 space-y-4">
             <FormField label="Nama Pelatih">
               <Input
                 placeholder="Masukkan nama lengkap pelatih"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                {...createForm.register("name")}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                  createForm.formState.errors.name ? "border-red-500" : ""
+                }`}
               />
+              {createForm.formState.errors.name && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.name.message}</span>
+              )}
             </FormField>
-
-
 
             <FormField label="Tanggal Lahir">
               <Input
                 type="date"
-                value={birthdate}
-                onChange={(e) => setBirthdate(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                {...createForm.register("birthdate")}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                  createForm.formState.errors.birthdate ? "border-red-500" : ""
+                }`}
               />
+              {createForm.formState.errors.birthdate && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.birthdate.message}</span>
+              )}
             </FormField>
 
             {/* School selection */}
@@ -644,46 +599,54 @@ export default function CoachPage() {
                 {schools.length === 0 ? (
                   <p className="text-xs text-muted-foreground italic">Tidak ada sekolah terdaftar</p>
                 ) : (
-                  schools.map((sch) => (
-                    <label
-                      key={sch._id}
-                      className="flex items-center gap-2.5 text-[13px] text-foreground cursor-pointer hover:bg-muted/10 p-1 rounded"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedSchoolIds.includes(sch._id!)}
-                        onChange={() => handleSchoolToggle(sch._id!)}
-                        className="rounded border-border/60 text-violet-600 focus:ring-violet-500/40"
-                      />
-                      <span>{sch.name}</span>
-                    </label>
-                  ))
+                  schools.map((sch) => {
+                    const selectedIds = createForm.watch("schoolIds") || [];
+                    const isChecked = selectedIds.includes(sch._id!);
+                    
+                    return (
+                      <label
+                        key={sch._id}
+                        className="flex items-center gap-2.5 text-[13px] text-foreground cursor-pointer hover:bg-muted/10 p-1 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              createForm.setValue("schoolIds", [...selectedIds, sch._id!]);
+                            } else {
+                              createForm.setValue("schoolIds", selectedIds.filter((id: string) => id !== sch._id!));
+                            }
+                          }}
+                          className="rounded border-border/60 text-violet-600 focus:ring-violet-500/40"
+                        />
+                        <span>{sch.name}</span>
+                      </label>
+                    );
+                  })
                 )}
               </div>
+              {createForm.formState.errors.schoolIds && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.schoolIds.message}</span>
+              )}
             </FormField>
 
-            {formError && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-3 py-2 text-[12px] text-red-600 dark:text-red-400">
-                <X className="h-3.5 w-3.5 flex-shrink-0" />
-                {formError}
-              </div>
-            )}
-
-            <div className="flex gap-2 pt-2 border-t border-border/40">
+            <div className="flex items-center gap-2 pt-3 mt-4 border-t border-border/40">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowCreate(false)}
+                disabled={isCreatePending}
                 className="flex-1 h-8 text-[13px] rounded-lg border-border/60"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
-                disabled={submitting}
-                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={isCreatePending || (createForm.watch("schoolIds")?.length || 0) === 0}
+                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-all"
               >
-                {submitting ? "Menyimpan..." : "Simpan"}
+                {isCreatePending ? "Menyimpan..." : "Simpan Pelatih"}
               </Button>
             </div>
           </form>

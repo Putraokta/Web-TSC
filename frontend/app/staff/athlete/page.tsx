@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import React, { useState, useMemo } from "react"
+import { TablePagination } from "@/components/ui/table-pagination"
 import Link from "next/link"
 
-import athleteService from "@/services/athlete.services"
-import schoolService from "@/services/school.services"
+import { useAthletes, useAthleteDetail } from "@/hooks/useAthlete"
+import { useSchools } from "@/hooks/useSchool"
 import type { IAthlete } from "@/types/Athlete"
 import type { ISchool } from "@/types/School"
 
@@ -72,7 +73,7 @@ function InitialsAvatar({ name }: { name: string }) {
 function ProfileAvatar({ name, imageUrl }: { name: string; imageUrl?: string | null }) {
 	const [hasError, setHasError] = useState(false)
 
-	useEffect(() => {
+	React.useEffect(() => {
 		setHasError(false)
 	}, [imageUrl])
 
@@ -116,11 +117,13 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 	)
 }
 
+const PAGE_SIZE = 10;
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function AthletePage() {
-	const [athletes, setAthletes] = useState<IAthlete[]>([])
-	const [schools, setSchools] = useState<ISchool[]>([])
-	const [loading, setLoading] = useState(true)
+	// ── TanStack React Query hooks ──
+	const { data: athletes = [], isLoading: loading } = useAthletes()
+	const { data: schools = [] } = useSchools({ limit: 1000 })
 
 	const schoolMap = React.useMemo(() => {
 		const map = new Map<string, string>()
@@ -128,47 +131,22 @@ export default function AthletePage() {
 		return map
 	}, [schools])
 
-	useEffect(() => {
-		let mounted = true
-		setLoading(true)
-		Promise.all([
-			athleteService.list(),
-			schoolService.list({ limit: 1000 })
-		])
-			.then(([athleteRes, schoolRes]: any) => {
-				if (!mounted) return
-				const athleteData = Array.isArray(athleteRes) ? athleteRes : athleteRes?.data ?? []
-				const schoolData = Array.isArray(schoolRes) ? schoolRes : schoolRes?.data ?? []
-				setAthletes(athleteData)
-				setSchools(schoolData)
-			})
-			.catch(() => {
-				setAthletes([])
-				setSchools([])
-			})
-			.finally(() => mounted && setLoading(false))
-
-		return () => {
-			mounted = false
-		}
-	}, [])
-
+	// ── Detail dialog ──
 	const [open, setOpen] = useState(false)
-	const [detailLoading, setDetailLoading] = useState(false)
-	const [selected, setSelected] = useState<IAthlete | null>(null)
+	const [detailId, setDetailId] = useState<string | null>(null)
+	const [currentPage, setCurrentPage] = useState(1)
+	const { data: selected = null, isLoading: detailLoading } = useAthleteDetail(detailId)
+
+	// Paginated athletes
+	const totalPages = Math.ceil(athletes.length / PAGE_SIZE);
+	const paginatedAthletes = useMemo(() => {
+		const start = (currentPage - 1) * PAGE_SIZE;
+		return athletes.slice(start, start + PAGE_SIZE);
+	}, [athletes, currentPage]);
 
 	const openDetail = (id: string) => {
-		setSelected(null)
+		setDetailId(id)
 		setOpen(true)
-		setDetailLoading(true)
-		athleteService
-			.get(id)
-			.then((res: any) => {
-				const data = res?.data ?? (Array.isArray(res) ? res[0] : res)
-				setSelected(data)
-			})
-			.catch(() => setSelected(null))
-			.finally(() => setDetailLoading(false))
 	}
 
 	return (
@@ -223,7 +201,7 @@ export default function AthletePage() {
 								</TableCell>
 							</TableRow>
 						) : (
-							athletes.map((a) => (
+							paginatedAthletes.map((a) => (
 								<TableRow
 									key={a._id}
 									className="border-b border-border/40 hover:bg-muted/30 transition-colors duration-100"
@@ -282,10 +260,19 @@ export default function AthletePage() {
 						)}
 					</TableBody>
 				</Table>
+
+				{/* Pagination */}
+				<TablePagination
+					currentPage={currentPage}
+					totalPages={totalPages}
+					onPageChange={setCurrentPage}
+					totalItems={athletes.length}
+					pageSize={PAGE_SIZE}
+				/>
 			</div>
 
 			{/* ── Detail Dialog ── */}
-			<Dialog open={open} onOpenChange={setOpen}>
+			<Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setDetailId(null); }}>
 				<DialogContent className="rounded-2xl border border-border/50 shadow-xl max-w-sm p-0 overflow-hidden gap-0">
 					{/* Dialog header */}
 					<DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">

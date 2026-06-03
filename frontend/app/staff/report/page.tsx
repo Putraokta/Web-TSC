@@ -1,7 +1,8 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
-import reportService from "@/services/report.services";
+import React, { useState, useMemo } from "react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { useMonthlyReport } from "@/hooks/useReport";
 import type { IMonthlyReport, IFinance } from "@/types/Finance";
 
 import { Button } from "@/components/ui/button";
@@ -118,9 +119,6 @@ function Badge({ type }: { type: string }) {
 
 // ── main page ─────────────────────────────────────────────────────────────────
 export default function ReportPage() {
-  const [report, setReport] = useState<IMonthlyReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -128,39 +126,34 @@ export default function ReportPage() {
     return `${y}-${m}`;
   });
 
-  const fetchReport = React.useCallback((period: string, isMounted: () => boolean) => {
-    setLoading(true);
-    setError(null);
-    const [yearStr, monthStr] = period.split("-");
-    const year = Number(yearStr) || new Date().getFullYear();
-    const month = Number(monthStr) || (new Date().getMonth() + 1);
+  // ── Derive year/month from selectedPeriod ──
+  const [yearStr, monthStr] = selectedPeriod.split("-");
+  const year = Number(yearStr) || new Date().getFullYear();
+  const month = Number(monthStr) || (new Date().getMonth() + 1);
 
-    reportService
-      .monthly({ year, month })
-      .then((res: any) => {
-        if (!isMounted()) return;
-        const data: IMonthlyReport | undefined = res?.data;
-        setReport(data ?? null);
-      })
-      .catch((err: any) => {
-        if (!isMounted()) return;
-        setError(err?.message || "Gagal mengambil laporan");
-      })
-      .finally(() => isMounted() && setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const isMounted = () => mounted;
-    fetchReport(selectedPeriod, isMounted);
-    return () => { mounted = false; };
-  }, [selectedPeriod, fetchReport]);
+  // ── TanStack React Query hook ──
+  const { data: report = null, isLoading: loading, error: queryError, refetch } = useMonthlyReport(year, month);
+  const error = queryError ? (queryError as any)?.message || "Gagal mengambil laporan" : null;
 
   const handleRefresh = () => {
-    let mounted = true;
-    const isMounted = () => mounted;
-    fetchReport(selectedPeriod, isMounted);
+    refetch();
   };
+
+  // Pagination for detail rows
+  const PAGE_SIZE = 10;
+  const [currentPage, setCurrentPage] = useState(1);
+  const details = report?.details ?? [];
+  const totalPages = Math.ceil(details.length / PAGE_SIZE);
+  const paginatedDetails = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return details.slice(start, start + PAGE_SIZE);
+  }, [details, currentPage]);
+
+  // Reset page when period changes
+  React.useEffect(() => { setCurrentPage(1); }, [selectedPeriod]);
+
+  const dateObj = new Date(year, month - 1, 1);
+  const bulan = dateObj.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
   const exportToPdf = async () => {
     if (!report) return;
@@ -282,10 +275,6 @@ export default function ReportPage() {
       alert("Gagal mengekspor PDF.");
     }
   };
-
-  const [yearStr, monthStr] = selectedPeriod.split("-");
-  const dateObj = new Date(Number(yearStr), Number(monthStr) - 1, 1);
-  const bulan = dateObj.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
   return (
     <>
@@ -539,7 +528,7 @@ export default function ReportPage() {
                     </td>
                   </tr>
                 ) : (
-                  report.details.map((d: IFinance, idx: number) => (
+                  paginatedDetails.map((d: IFinance, idx: number) => (
                     <tr
                       key={d._id}
                       className="report-table-row"
@@ -583,6 +572,17 @@ export default function ReportPage() {
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination */}
+          <div style={{ borderTop: "1px solid #f1f5f9" }}>
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              totalItems={details.length}
+              pageSize={PAGE_SIZE}
+            />
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
 import { Response } from "express";
 import { IAuthRequest, IPagination } from "../utils/interfaces";
 import SchoolModel from "../models/school.model";
+import CoachModel from "../models/coach.model";
+import { ROLES } from "../utils/contants";
 import { error, pagination, success } from "../utils/response";
 
 export default {
@@ -27,6 +29,13 @@ export default {
 
         try {
             const query: any = { isActive: { $ne: false } };
+
+            // Scope: if the user is a coach, only return their assigned schools
+            if (req.user?.role === ROLES.PELATIH) {
+                const coach = await CoachModel.findById(req.user._id).select("schools");
+                const schoolIds = coach?.schools || [];
+                query._id = { $in: schoolIds };
+            }
 
             if (search) {
                 query.name = { $regex: search, $options: "i" };

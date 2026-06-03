@@ -6,6 +6,7 @@ import schoolService from "@/services/school.services";
 import mediaService from "@/services/media.services";
 import type { IAthlete } from "@/types/Athlete";
 import type { ISchool } from "@/types/School";
+import { useCreateAthleteForm } from "@/hooks/useAthlete";
 import { toast } from "react-toastify";
 
 import {
@@ -168,11 +169,11 @@ export default function CoachAthletePage() {
   const [imageUploading, setImageUploading] = useState(false);
 
   // Form states (Create)
-  const [newName, setNewName] = useState("");
-  const [newBirthdate, setNewBirthdate] = useState("");
-  const [newBelt, setNewBelt] = useState("putih");
-  const [newSchoolId, setNewSchoolId] = useState("");
-  const [newImageUrl, setNewImageUrl] = useState("");
+  const { form: createForm, onSubmit: onCreateSubmit, isPending: isCreatePending } = useCreateAthleteForm(() => {
+    setCreateOpen(false);
+    setNewImagePreview("");
+    loadData();
+  });
   const [newImagePreview, setNewImagePreview] = useState("");
 
   // Form states (Edit)
@@ -296,7 +297,7 @@ export default function CoachAthletePage() {
         if (isEdit) {
           setEditImageUrl(uploadedUrl);
         } else {
-          setNewImageUrl(uploadedUrl);
+          createForm.setValue("imageUrl", uploadedUrl);
         }
         toast.success("Foto berhasil diunggah!");
       } else {
@@ -316,47 +317,6 @@ export default function CoachAthletePage() {
       }
     } finally {
       setImageUploading(false);
-    }
-  };
-
-  // Handle Submit Create
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newSchoolId) {
-      toast.warn("Harap pilih sekolah.");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    try {
-      const payload = {
-        name: newName.trim(),
-        birthdate: new Date(newBirthdate).toISOString(),
-        belt: newBelt.toLowerCase(),
-        schoolIds: [newSchoolId],
-        imageUrl: newImageUrl || undefined,
-      };
-
-      const res = await athleteService.create(payload);
-      const created = res?.data ?? res;
-
-      if (created) {
-        setAthletes((prev) => [created, ...prev]);
-        toast.success("Atlet berhasil ditambahkan.");
-        setCreateOpen(false);
-        // Reset form
-        setNewName("");
-        setNewBirthdate("");
-        setNewBelt("putih");
-        setNewSchoolId("");
-        setNewImageUrl("");
-        setNewImagePreview("");
-      }
-    } catch (err: any) {
-      setError(err?.message || "Gagal membuat atlet");
-      toast.error(err?.message || "Gagal membuat atlet.");
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -681,41 +641,47 @@ export default function CoachAthletePage() {
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleCreate} className="px-6 py-5 space-y-4">
+          <form onSubmit={onCreateSubmit} className="px-6 py-5 space-y-4">
             <FormField label="Nama Lengkap">
               <Input
                 placeholder="Masukkan nama lengkap atlet"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                {...createForm.register("name")}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                  createForm.formState.errors.name ? "border-red-500" : ""
+                }`}
               />
+              {createForm.formState.errors.name && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.name.message}</span>
+              )}
             </FormField>
 
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Tanggal Lahir">
                 <Input
                   type="date"
-                  value={newBirthdate}
-                  onChange={(e) => setNewBirthdate(e.target.value)}
-                  required
+                  {...createForm.register("birthdate")}
                   max={new Date().toISOString().split("T")[0]}
-                  className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                  className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                    createForm.formState.errors.birthdate ? "border-red-500" : ""
+                  }`}
                 />
+                {createForm.formState.errors.birthdate && (
+                  <span className="text-[11px] text-red-500">{createForm.formState.errors.birthdate.message}</span>
+                )}
               </FormField>
 
               <FormField label="Warna Sabuk">
                 <select
-                  value={newBelt}
-                  onChange={(e) => setNewBelt(e.target.value)}
-                  required
-                  className="h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none"
+                  {...createForm.register("belt")}
+                  className={`h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none ${
+                    createForm.formState.errors.belt ? "border-red-500" : ""
+                  }`}
                 >
                   <option value="putih">Putih</option>
                   <option value="kuning">Kuning</option>
+                  <option value="hijau">Hijau</option>
                   <option value="biru">Biru</option>
                   <option value="coklat">Coklat</option>
-                  <option value="merah">Merah</option>
                   <option value="hitam">Hitam</option>
                 </select>
               </FormField>
@@ -724,10 +690,13 @@ export default function CoachAthletePage() {
             {/* School Dropdown Select */}
             <FormField label="Sekolah">
               <select
-                value={newSchoolId}
-                onChange={(e) => setNewSchoolId(e.target.value)}
-                required
-                className="h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none"
+                className={`h-8 w-full rounded-lg border border-border/60 bg-background px-3 text-[13px] text-foreground focus:ring-1 focus:ring-violet-500/40 focus:border-violet-500 outline-none ${
+                  createForm.formState.errors.schools ? "border-red-500" : ""
+                }`}
+                onChange={(e) => {
+                  createForm.setValue("schools", e.target.value ? [e.target.value] : []);
+                }}
+                value={(createForm.watch("schools") || [])[0] || ""}
               >
                 <option value="">Pilih Sekolah</option>
                 {schools.map((sch) => (
@@ -736,18 +705,21 @@ export default function CoachAthletePage() {
                   </option>
                 ))}
               </select>
+              {createForm.formState.errors.schools && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.schools.message}</span>
+              )}
             </FormField>
 
             {/* Interactive Image Upload */}
             <FormField label="Foto Profil (JPG, PNG, WEBP)">
               <div className="flex items-center gap-4 p-3 border border-border/60 rounded-lg bg-background shadow-inner">
-                {newImagePreview || newImageUrl ? (
+                {newImagePreview || createForm.watch("imageUrl") ? (
                   <div className="relative h-12 w-12 rounded-lg overflow-hidden ring-1 ring-border group flex-shrink-0">
-                    <img src={newImagePreview || newImageUrl} alt="Preview" className="h-full w-full object-cover" />
+                    <img src={newImagePreview || createForm.watch("imageUrl") || ""} alt="Preview" className="h-full w-full object-cover" />
                     <button
                       type="button"
                       onClick={() => {
-                        setNewImageUrl("");
+                        createForm.setValue("imageUrl", "");
                         setNewImagePreview("");
                       }}
                       className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-white"
@@ -805,10 +777,10 @@ export default function CoachAthletePage() {
               </Button>
               <Button
                 type="submit"
-                disabled={submitting || imageUploading}
+                disabled={isCreatePending || imageUploading}
                 className="flex-1 h-8.5 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
               >
-                {submitting ? "Menyimpan..." : "Simpan"}
+                {isCreatePending ? "Menyimpan..." : "Simpan"}
               </Button>
             </div>
           </form>

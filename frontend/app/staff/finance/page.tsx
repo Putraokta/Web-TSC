@@ -1,9 +1,15 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
-import financeService from "@/services/finance.services";
+import React, { useState, useMemo } from "react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  useFinances,
+  useFinanceDetail,
+  useCreateFinanceForm,
+  useUpdateFinance,
+  useDeleteFinance,
+} from "@/hooks/useFinance";
 import type { IFinance } from "@/types/Finance";
-import { toast } from "react-toastify";
 
 import {
   Table,
@@ -146,69 +152,54 @@ function SummaryCards({ items }: { items: IFinance[] }) {
   );
 }
 
+const PAGE_SIZE = 10;
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FinancePage() {
-  const [items, setItems] = useState<IFinance[]>([]);
-  const [loading, setLoading] = useState(true);
+  // ── TanStack React Query hooks ──
+  const { data: items = [], isLoading: loading } = useFinances({ limit: 1000 });
+  const { form: createForm, onSubmit: onCreateSubmit, isPending: isCreatePending } = useCreateFinanceForm(() => {
+    setShowCreate(false);
+  });
+  const updateFinance = useUpdateFinance();
+  const deleteFinance = useDeleteFinance();
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    financeService
-      .list({ limit: 1000 })
-      .then((res: any) => {
-        if (!mounted) return;
-        const data = Array.isArray(res) ? res : res?.data ?? [];
-        setItems(data);
-      })
-      .catch(() => setItems([]))
-      .finally(() => mounted && setLoading(false));
-
-    return () => { mounted = false; };
-  }, []);
-
+  // ── Detail dialog ──
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<IFinance | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const { data: selected = null, isLoading: detailLoading } = useFinanceDetail(detailId);
 
+  // ── Create dialog ──
   const [showCreate, setShowCreate] = useState(false);
-  const [type, setType] = useState<"income" | "expense">("income");
-  const [balance, setBalance] = useState<string>("");
-  const [description, setDescription] = useState("");
-  const [date, setDate] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
-  const openDetail = (id: string) => {
-    setSelected(null);
-    setOpen(true);
-    setDetailLoading(true);
-    financeService
-      .get(id)
-      .then((res: any) => {
-        const data = res?.data ?? (Array.isArray(res) ? res[0] : res);
-        setSelected(data);
-      })
-      .catch(() => setSelected(null))
-      .finally(() => setDetailLoading(false));
-  };
-
-  // Edit states
+  // ── Edit dialog ──
   const [showEdit, setShowEdit] = useState(false);
   const [editId, setEditId] = useState("");
   const [editType, setEditType] = useState<"income" | "expense">("income");
   const [editBalance, setEditBalance] = useState<string>("");
   const [editDescription, setEditDescription] = useState("");
   const [editDate, setEditDate] = useState("");
-  const [editSubmitting, setEditSubmitting] = useState(false);
   const [editFormError, setEditFormError] = useState<string | null>(null);
 
-  // Delete states
+  // ── Delete dialog ──
   const [showDelete, setShowDelete] = useState(false);
-  const [deleteId, setDeleteId] = useState("");
   const [deleteSelected, setDeleteSelected] = useState<IFinance | null>(null);
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Paginated items
+  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return items.slice(start, start + PAGE_SIZE);
+  }, [items, currentPage]);
+
+  const submitting = updateFinance.isPending || deleteFinance.isPending;
+
+  const openDetail = (id: string) => {
+    setDetailId(id);
+    setOpen(true);
+  };
 
   const openEdit = (finance: IFinance) => {
     setEditId(finance._id || "");
@@ -226,7 +217,6 @@ export default function FinancePage() {
   };
 
   const openDelete = (finance: IFinance) => {
-    setDeleteId(finance._id || "");
     setDeleteSelected(finance);
     setShowDelete(true);
   };
@@ -245,11 +235,8 @@ export default function FinancePage() {
         <Button
           size="sm"
           onClick={() => {
-            setType("income");
-            setBalance("");
-            setDescription("");
-            setDate(new Date().toISOString().split("T")[0]);
-            setFormError(null);
+            createForm.reset();
+            createForm.setValue("date", new Date());
             setShowCreate(true);
           }}
           className="gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
@@ -309,7 +296,7 @@ export default function FinancePage() {
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((f) => (
+              paginatedItems.map((f) => (
                 <TableRow
                   key={f._id}
                   className="border-b border-border/40 hover:bg-muted/25 transition-colors duration-100"
@@ -374,10 +361,19 @@ export default function FinancePage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={items.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* ── Detail Dialog ── */}
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setDetailId(null); }}>
         <DialogContent className="sm:max-w-sm rounded-2xl border border-border/50 shadow-xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">
             {detailLoading ? (
@@ -501,38 +497,7 @@ export default function FinancePage() {
             </div>
           </DialogHeader>
 
-          <form
-            className="px-6 py-5 space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              setFormError(null);
-              if (!balance || Number(balance) <= 0) {
-                setFormError("Masukkan jumlah yang valid");
-                return;
-              }
-              setSubmitting(true);
-              try {
-                const payload = { 
-                  type, 
-                  balance: Number(balance), 
-                  description,
-                  date: date ? new Date(date) : undefined
-                };
-                const res = await financeService.create(payload);
-                const created = res?.data ?? res;
-                if (created) setItems((prev) => [created, ...prev]);
-                setShowCreate(false);
-                setType("income");
-                setBalance("");
-                setDescription("");
-                setDate("");
-              } catch (err: any) {
-                setFormError(err?.message || "Gagal menyimpan data");
-              } finally {
-                setSubmitting(false);
-              }
-            }}
-          >
+          <form onSubmit={onCreateSubmit} className="px-6 py-5 space-y-4">
             {/* Type toggle */}
             <FormField label="Tipe Transaksi">
               <div className="grid grid-cols-2 gap-2">
@@ -540,10 +505,10 @@ export default function FinancePage() {
                   <button
                     key={t}
                     type="button"
-                    onClick={() => setType(t)}
+                    onClick={() => createForm.setValue("type", t)}
                     className={cn(
                       "flex items-center justify-center gap-2 h-9 rounded-lg border text-[13px] font-medium transition-colors",
-                      type === t
+                      createForm.watch("type") === t
                         ? t === "income"
                           ? "bg-emerald-600 border-emerald-600 text-white"
                           : "bg-red-600 border-red-600 text-white"
@@ -557,60 +522,62 @@ export default function FinancePage() {
                   </button>
                 ))}
               </div>
+              {createForm.formState.errors.type && (
+                <span className="text-[11px] text-red-500 mt-1">{createForm.formState.errors.type.message}</span>
+              )}
             </FormField>
 
             <FormField label="Jumlah">
               <Input
                 type="number"
-                value={balance}
-                onChange={(e) => setBalance(e.target.value)}
-                required
+                {...createForm.register("balance")}
                 placeholder="0"
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                  createForm.formState.errors.balance ? "border-red-500" : ""
+                }`}
               />
+              {createForm.formState.errors.balance && (
+                <span className="text-[11px] text-red-500 mt-1">{createForm.formState.errors.balance.message}</span>
+              )}
             </FormField>
 
             <FormField label="Tanggal Transaksi">
               <Input
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
+                {...createForm.register("date")}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                  createForm.formState.errors.date ? "border-red-500" : ""
+                }`}
               />
+              {createForm.formState.errors.date && (
+                <span className="text-[11px] text-red-500 mt-1">{createForm.formState.errors.date.message}</span>
+              )}
             </FormField>
 
             <FormField label="Deskripsi">
               <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                {...createForm.register("description")}
                 placeholder="Catatan transaksi (opsional)"
                 className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
               />
             </FormField>
-
-            {formError && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/8 px-3 py-2 text-[12px] text-red-600 dark:text-red-400">
-                <X className="h-3.5 w-3.5 flex-shrink-0" />
-                {formError}
-              </div>
-            )}
 
             <div className="flex gap-2 pt-2 border-t border-border/40">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowCreate(false)}
+                disabled={isCreatePending}
                 className="flex-1 h-8 text-[13px] rounded-lg border-border/60"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
-                disabled={submitting}
-                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={isCreatePending}
+                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
               >
-                {submitting ? "Menyimpan..." : "Simpan"}
+                {isCreatePending ? "Menyimpan..." : "Simpan Transaksi"}
               </Button>
             </div>
           </form>
@@ -638,27 +605,26 @@ export default function FinancePage() {
                 setEditFormError("Masukkan jumlah yang valid");
                 return;
               }
-              setEditSubmitting(true);
-              try {
-                const payload = { 
-                  type: editType, 
-                  balance: Number(editBalance), 
-                  description: editDescription,
-                  date: editDate ? new Date(editDate) : undefined
-                };
-                const res = await financeService.update(editId, payload);
-                const updated = res?.data ?? res;
-                if (updated) {
-                  setItems((prev) => prev.map((item) => (item._id === editId ? updated : item)));
-                  toast.success("Data keuangan berhasil diperbarui");
+
+              updateFinance.mutate(
+                {
+                  id: editId,
+                  payload: {
+                    type: editType,
+                    balance: Number(editBalance),
+                    description: editDescription,
+                    date: editDate ? new Date(editDate) : undefined,
+                  },
+                },
+                {
+                  onSuccess: () => {
+                    setShowEdit(false);
+                  },
+                  onError: (err: any) => {
+                    setEditFormError(err?.message || "Gagal memperbarui data");
+                  },
                 }
-                setShowEdit(false);
-              } catch (err: any) {
-                setEditFormError(err?.message || "Gagal memperbarui data");
-                toast.error("Gagal memperbarui data keuangan");
-              } finally {
-                setEditSubmitting(false);
-              }
+              );
             }}
           >
             {/* Type toggle */}
@@ -735,10 +701,10 @@ export default function FinancePage() {
               </Button>
               <Button
                 type="submit"
-                disabled={editSubmitting}
+                disabled={updateFinance.isPending}
                 className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
               >
-                {editSubmitting ? "Menyimpan..." : "Simpan Perubahan"}
+                {updateFinance.isPending ? "Menyimpan..." : "Simpan Perubahan"}
               </Button>
             </div>
           </form>
@@ -773,23 +739,18 @@ export default function FinancePage() {
               Batal
             </Button>
             <Button
-              disabled={deleteSubmitting}
-              onClick={async () => {
-                setDeleteSubmitting(true);
-                try {
-                  await financeService.delete(deleteId);
-                  setItems((prev) => prev.filter((item) => item._id !== deleteId));
-                  toast.success("Transaksi keuangan berhasil dihapus");
-                  setShowDelete(false);
-                } catch (err: any) {
-                  toast.error(err?.message || "Gagal menghapus transaksi keuangan");
-                } finally {
-                  setDeleteSubmitting(false);
-                }
+              disabled={deleteFinance.isPending}
+              onClick={() => {
+                if (!deleteSelected?._id) return;
+                deleteFinance.mutate(deleteSelected._id, {
+                  onSuccess: () => {
+                    setShowDelete(false);
+                  },
+                });
               }}
               className="flex-1 h-8.5 text-[13px] rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm"
             >
-              {deleteSubmitting ? "Menghapus..." : "Ya, Hapus Permanen"}
+              {deleteFinance.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
             </Button>
           </div>
         </DialogContent>

@@ -2,6 +2,8 @@ import { Response } from "express";
 import { IAuthRequest, IPagination } from "../utils/interfaces";
 import { error, pagination, success, unauthorized } from "../utils/response";
 import AthleteModel from "../models/athlete.model";
+import CoachModel from "../models/coach.model";
+import { ROLES } from "../utils/contants";
 
 export default {
     async create(req: IAuthRequest, res: Response) {
@@ -25,6 +27,14 @@ export default {
 
         try {
             const query: any = {isActive: { $ne: false }};
+
+            // Scope: if the user is a coach, only return athletes in their schools
+            if (req.user?.role === ROLES.PELATIH) {
+                const coach = await CoachModel.findById(req.user._id).select("schools");
+                const schoolIds = coach?.schools || [];
+                query.schools = { $in: schoolIds };
+            }
+
             if (search){
                 Object.assign(query, {
                          name: { $regex: search, $options: "i" },

@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import { error, success } from "../utils/response";
 import imageKitUtil from "../utils/uploader";
 import MediaModel from "../models/media.model";
+import CoachModel from "../models/coach.model";
+import AthleteModel from "../models/athlete.model";
+import { ROLES } from "../utils/contants";
 import { IAuthRequest } from "../utils/interfaces";
 
 export default {
@@ -87,6 +90,25 @@ export default {
             if (schoolId) query.school = schoolId;
             if (search) {
                 query.title = { $regex: search as string, $options: "i" };
+            }
+
+            // Scope: if the user is a coach, only return media they uploaded
+            // or media related to their assigned schools/athletes
+            if (req.user?.role === ROLES.PELATIH) {
+                const coach = await CoachModel.findById(req.user._id).select("schools");
+                const coachSchoolIds = coach?.schools || [];
+
+                // Find athletes that belong to the coach's schools
+                const athleteIds = await AthleteModel.find({
+                    schools: { $in: coachSchoolIds },
+                    isActive: { $ne: false },
+                }).distinct("_id");
+
+                query.$or = [
+                    { uploader: req.user._id },
+                    { school: { $in: coachSchoolIds } },
+                    { athlete: { $in: athleteIds } },
+                ];
             }
 
             const results = await MediaModel.find(query)

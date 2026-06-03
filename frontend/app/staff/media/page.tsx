@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import mediaService from "@/services/media.services";
-import athleteService from "@/services/athlete.services";
-import schoolService from "@/services/school.services";
+import React, { useState, useMemo } from "react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { useMediaList } from "@/hooks/useMedia";
+import { useAthletes } from "@/hooks/useAthlete";
+import { useSchools } from "@/hooks/useSchool";
 import type { IMedia } from "@/types/Media";
 import type { IAthlete } from "@/types/Athlete";
 import type { ISchool } from "@/types/School";
@@ -85,43 +86,17 @@ function SkeletonRows() {
 }
 
 export default function StaffMediaPage() {
-  // Main lists states
-  const [mediaList, setMediaList] = useState<IMedia[]>([]);
-  const [athletes, setAthletes] = useState<IAthlete[]>([]);
-  const [schools, setSchools] = useState<ISchool[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // ── TanStack React Query hooks ──
+  const { data: mediaList = [], isLoading: loading } = useMediaList();
+  const { data: athletes = [] } = useAthletes({ limit: 1000 });
+  const { data: schools = [] } = useSchools({ limit: 1000 });
 
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTypeTab, setSelectedTypeTab] = useState<"all" | "sertifikat" | "latihan">("all");
   const [selectedAthleteFilter, setSelectedAthleteFilter] = useState("all");
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState("all");
-
-  // Load Initial Data
-  const loadData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [mediaRes, athleteRes, schoolRes] = await Promise.all([
-        mediaService.listMedia(),
-        athleteService.list({ limit: 1000 }),
-        schoolService.list({ limit: 1000 }),
-      ]);
-      setMediaList(mediaRes?.data ?? mediaRes ?? []);
-      setAthletes(athleteRes?.data ?? athleteRes ?? []);
-      setSchools(schoolRes?.data ?? schoolRes ?? []);
-    } catch (err: any) {
-      setError(err?.message || "Gagal mengambil data media, atlet, atau sekolah.");
-      toast.error("Gagal memuat data dari server.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filtered & Sorted Media List
   const filteredData = useMemo(() => {
@@ -150,6 +125,17 @@ export default function StaffMediaPage() {
 
     return result;
   }, [mediaList, searchQuery, selectedTypeTab, selectedAthleteFilter, selectedSchoolFilter]);
+
+  // Paginated data
+  const PAGE_SIZE = 10;
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredData.slice(start, start + PAGE_SIZE);
+  }, [filteredData, currentPage]);
+
+  // Reset page when filters change
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, selectedTypeTab, selectedAthleteFilter, selectedSchoolFilter]);
 
   const handleDownload = async (url: string, title: string) => {
     try {
@@ -354,7 +340,7 @@ export default function StaffMediaPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((media) => (
+                paginatedData.map((media) => (
                   <TableRow
                     key={media._id}
                     className="border-b border-border/40 hover:bg-muted/25 transition-colors duration-100"
@@ -450,6 +436,15 @@ export default function StaffMediaPage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredData.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
     </div>
   );

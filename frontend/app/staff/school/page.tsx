@@ -1,7 +1,13 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
-import schoolService from "@/services/school.services";
+import React, { useState, useMemo } from "react";
+import { TablePagination } from "@/components/ui/table-pagination";
+import {
+  useSchools,
+  useSchoolDetail,
+  useCreateSchoolForm,
+  useUpdateSchool,
+} from "@/hooks/useSchool";
 import { ISchool, ICreateSchool } from "@/types/School";
 
 import { Button } from "@/components/ui/button";
@@ -96,53 +102,41 @@ function FormField({
   );
 }
 
+const PAGE_SIZE = 10;
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SchoolPage() {
-  const [data, setData] = useState<ISchool[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // ── TanStack React Query hooks ──
+  const { data: schools = [], isLoading: loading } = useSchools();
+  const updateSchool = useUpdateSchool();
 
+  // ── Local UI states ──
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [error, setError] = useState<string | null>(null);
+
+  // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
+  const [detailSchoolId, setDetailSchoolId] = useState<string | null>(null);
+  const { data: detailSchool = null, isLoading: detailLoading } = useSchoolDetail(detailSchoolId);
+
+  // Edit dialog
   const [editOpen, setEditOpen] = useState(false);
   const [selectedSchool, setSelectedSchool] = useState<ISchool | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-
   const [editName, setEditName] = useState("");
   const [editAddress, setEditAddress] = useState("");
-  const [editSubmitting, setEditSubmitting] = useState(false);
 
-  const [newSchools, setNewSchools] = useState<ICreateSchool[]>([
-    { name: "", address: "" },
-  ]);
-
-  useEffect(() => {
-    let mounted = true;
-    async function loadSchools() {
-      setLoading(true);
-      try {
-        const res = await schoolService.list();
-        const schools = res?.data ?? res ?? [];
-        if (mounted) setData(schools);
-      } catch (err: any) {
-        if (mounted) setError(err?.message || "Gagal mengambil data sekolah");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    loadSchools();
-    return () => { mounted = false; };
-  }, []);
+  // Create form
+  const { form: createForm, fields, append, remove, onSubmit: onCreateSubmit, isPending: isCreatePending } = useCreateSchoolForm(() => {
+    setShowForm(false);
+  });
 
   const filteredData = useMemo(() => {
     const q = (searchQuery || "").trim().toLowerCase();
-    let list = Array.isArray(data) ? [...data] : [];
+    let list = Array.isArray(schools) ? [...schools] : [];
     if (q) {
       list = list.filter((s) =>
         (s.name || "").toLowerCase().includes(q) ||
@@ -155,30 +149,19 @@ export default function SchoolPage() {
       return sortOrder === "asc" ? an.localeCompare(bn) : bn.localeCompare(an);
     });
     return list;
-  }, [data, searchQuery, sortOrder]);
+  }, [schools, searchQuery, sortOrder]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      const createdAll: ISchool[] = [];
-      for (const item of newSchools) {
-        if (!item.name || typeof item.name !== "string") throw new Error("Nama sekolah wajib diisi untuk setiap baris");
-        if (!item.address || typeof item.address !== "string") throw new Error("Alamat sekolah wajib diisi untuk setiap baris");
-        const res = await schoolService.create(item);
-        const created = res?.data ?? res;
-        if (created) createdAll.push(created);
-      }
-      if (createdAll.length) setData((prev) => [...createdAll, ...prev]);
-      setNewSchools([{ name: "", address: "", phone: "", email: "" }]);
-      setShowForm(false);
-    } catch (err: any) {
-      setError(err?.message || "Gagal menyimpan sekolah");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // Paginated data
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredData.slice(start, start + PAGE_SIZE);
+  }, [filteredData, currentPage]);
+
+  // Reset page when filters change
+  React.useEffect(() => { setCurrentPage(1); }, [searchQuery, sortOrder]);
+
+  const submitting = updateSchool.isPending;
 
   return (
     <div className="p-6 space-y-6">
@@ -310,7 +293,7 @@ export default function SchoolPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredData.map((school) => (
+              paginatedData.map((school) => (
                 <TableRow
                   key={school._id}
                   className="border-b border-border/40 hover:bg-muted/25 transition-colors duration-100"
@@ -333,19 +316,9 @@ export default function SchoolPage() {
                       {/* Detail */}
                       <button
                         title="Lihat detail"
-                        onClick={async () => {
-                          setDetailLoading(true);
-                          setError(null);
-                          try {
-                            const res = await schoolService.get(school._id);
-                            const data = res?.data ?? res;
-                            setSelectedSchool(data);
-                            setDetailOpen(true);
-                          } catch (err: any) {
-                            setError(err?.message || "Gagal mengambil detail sekolah");
-                          } finally {
-                            setDetailLoading(false);
-                          }
+                        onClick={() => {
+                          setDetailSchoolId(school._id);
+                          setDetailOpen(true);
                         }}
                         className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-violet-600 hover:border-violet-300 hover:bg-violet-50 dark:hover:bg-violet-950/30 dark:hover:border-violet-700 dark:hover:text-violet-400 transition-colors"
                       >
@@ -372,6 +345,15 @@ export default function SchoolPage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredData.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* ── Create Modal ── */}
@@ -386,84 +368,88 @@ export default function SchoolPage() {
             </div>
           </DialogHeader>
 
-          <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
-            {newSchools.map((s, idx) => (
-              <div
-                key={idx}
-                className={cn(
-                  "rounded-xl border border-border/50 p-4 space-y-3",
-                  newSchools.length > 1 && "bg-muted/20"
-                )}
-              >
-                {newSchools.length > 1 && (
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[12px] font-medium text-muted-foreground">
-                      Sekolah {idx + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setNewSchools((prev) => prev.filter((_, i) => i !== idx))}
-                      className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+          <form onSubmit={onCreateSubmit} className="px-6 py-5 space-y-4">
+            <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
+              {fields.map((field, idx) => (
+                <div
+                  key={field.id}
+                  className={cn(
+                    "rounded-xl border border-border/50 p-4 space-y-3",
+                    fields.length > 1 && "bg-muted/20"
+                  )}
+                >
+                  {fields.length > 1 && (
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[12px] font-medium text-muted-foreground">
+                        Sekolah {idx + 1}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => remove(idx)}
+                        className="h-6 w-6 rounded-md flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField label="Nama Sekolah">
+                      <Input
+                        placeholder="Masukkan nama sekolah"
+                        {...createForm.register(`schools.${idx}.name`)}
+                        className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                          createForm.formState.errors.schools?.[idx]?.name ? "border-red-500" : ""
+                        }`}
+                      />
+                      {createForm.formState.errors.schools?.[idx]?.name && (
+                        <span className="text-[11px] text-red-500">{createForm.formState.errors.schools?.[idx]?.name?.message}</span>
+                      )}
+                    </FormField>
+                    <FormField label="Alamat">
+                      <Input
+                        placeholder="Masukkan alamat"
+                        {...createForm.register(`schools.${idx}.address`)}
+                        className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                          createForm.formState.errors.schools?.[idx]?.address ? "border-red-500" : ""
+                        }`}
+                      />
+                      {createForm.formState.errors.schools?.[idx]?.address && (
+                        <span className="text-[11px] text-red-500">{createForm.formState.errors.schools?.[idx]?.address?.message}</span>
+                      )}
+                    </FormField>
                   </div>
-                )}
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField label="Nama Sekolah">
-                    <Input
-                      placeholder="Masukkan nama sekolah"
-                      value={s.name}
-                      onChange={(e) => {
-                        const copy = [...newSchools];
-                        copy[idx] = { ...copy[idx], name: e.target.value };
-                        setNewSchools(copy);
-                      }}
-                      required
-                      className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-                    />
-                  </FormField>
-                  <FormField label="Alamat">
-                    <Input
-                      placeholder="Masukkan alamat"
-                      value={s.address}
-                      onChange={(e) => {
-                        const copy = [...newSchools];
-                        copy[idx] = { ...copy[idx], address: e.target.value };
-                        setNewSchools(copy);
-                      }}
-                      required
-                      className="h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40"
-                    />
-                  </FormField>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             <button
               type="button"
-              onClick={() => setNewSchools((prev) => [...prev, { name: "", address: "" }])}
+              onClick={() => append({ name: "", address: "", phone: "", email: "" })}
               className="flex items-center gap-1.5 text-[13px] text-violet-600 dark:text-violet-400 hover:text-violet-700 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" />
               Tambah Baris
             </button>
+            {createForm.formState.errors.schools?.root && (
+              <p className="text-[11px] text-red-500">{createForm.formState.errors.schools.root.message}</p>
+            )}
 
             <div className="flex gap-2 pt-2 border-t border-border/40">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowForm(false)}
+                disabled={isCreatePending}
                 className="flex-1 h-8 text-[13px] rounded-lg border-border/60"
               >
                 Batal
               </Button>
               <Button
                 type="submit"
-                disabled={submitting}
-                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
+                disabled={isCreatePending}
+                className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
               >
-                {submitting ? "Menyimpan..." : "Simpan"}
+                {isCreatePending ? "Menyimpan..." : "Simpan Sekolah"}
               </Button>
             </div>
           </form>
@@ -471,7 +457,7 @@ export default function SchoolPage() {
       </Dialog>
 
       {/* ── Detail Dialog ── */}
-      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+      <Dialog open={detailOpen} onOpenChange={(open) => { setDetailOpen(open); if (!open) setDetailSchoolId(null); }}>
         <DialogContent className="sm:max-w-sm rounded-2xl border border-border/50 shadow-xl p-0 gap-0 overflow-hidden">
           <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">
             {detailLoading ? (
@@ -481,9 +467,9 @@ export default function SchoolPage() {
               </>
             ) : (
               <div className="flex items-center gap-3">
-                {selectedSchool && <SchoolAvatar name={selectedSchool.name} />}
+                {detailSchool && <SchoolAvatar name={detailSchool.name} />}
                 <DialogTitle className="text-[15px] font-semibold tracking-tight">
-                  {selectedSchool?.name ?? "Detail Sekolah"}
+                  {detailSchool?.name ?? "Detail Sekolah"}
                 </DialogTitle>
               </div>
             )}
@@ -501,8 +487,8 @@ export default function SchoolPage() {
               </div>
             ) : (
               <>
-                <DetailRow label="Nama" value={selectedSchool?.name} />
-                <DetailRow label="Alamat" value={selectedSchool?.address} />
+                <DetailRow label="Nama" value={detailSchool?.name} />
+                <DetailRow label="Alamat" value={detailSchool?.address} />
               </>
             )}
           </div>
@@ -536,27 +522,29 @@ export default function SchoolPage() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (!selectedSchool?._id) return;
-              setEditSubmitting(true);
               setError(null);
               if (!editAddress || typeof editAddress !== "string") {
                 setError("Alamat sekolah wajib diisi");
-                setEditSubmitting(false);
                 return;
               }
-              try {
-                const payload: ICreateSchool = { name: editName, address: editAddress };
-                const res = await schoolService.update(selectedSchool._id, payload);
-                const updated = res?.data ?? res;
-                setData((prev) => prev.map((s) => (s._id === updated._id ? updated : s)));
-                setEditOpen(false);
-                setSelectedSchool(null);
-                setEditName("");
-                setEditAddress("");
-              } catch (err: any) {
-                setError(err?.message || "Gagal memperbarui sekolah");
-              } finally {
-                setEditSubmitting(false);
-              }
+
+              updateSchool.mutate(
+                {
+                  id: selectedSchool._id,
+                  payload: { name: editName, address: editAddress },
+                },
+                {
+                  onSuccess: () => {
+                    setEditOpen(false);
+                    setSelectedSchool(null);
+                    setEditName("");
+                    setEditAddress("");
+                  },
+                  onError: (err: any) => {
+                    setError(err?.message || "Gagal memperbarui sekolah");
+                  },
+                }
+              );
             }}
           >
             <FormField label="Nama Sekolah">
@@ -587,10 +575,10 @@ export default function SchoolPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={editSubmitting}
+                disabled={updateSchool.isPending}
                 className="flex-1 h-8 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
               >
-                {editSubmitting ? "Menyimpan..." : "Simpan"}
+                {updateSchool.isPending ? "Menyimpan..." : "Simpan"}
               </Button>
             </div>
           </form>
