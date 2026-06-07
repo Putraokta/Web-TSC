@@ -7,6 +7,7 @@ import {
   useSchoolDetail,
   useCreateSchoolForm,
   useUpdateSchool,
+  useDeleteSchool,
 } from "@/hooks/useSchool";
 import { ISchool, ICreateSchool } from "@/types/School";
 
@@ -22,6 +23,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -33,7 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Eye, School, ArrowUpDown, Search, X } from "lucide-react";
+import { Plus, Pencil, Eye, School, ArrowUpDown, Search, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -108,8 +110,9 @@ const PAGE_SIZE = 10;
 
 export default function SchoolPage() {
   // ── TanStack React Query hooks ──
-  const { data: schools = [], isLoading: loading } = useSchools();
+  const { data: schools = [], isLoading: loading } = useSchools({ limit: 1000 });
   const updateSchool = useUpdateSchool();
+  const deleteSchool = useDeleteSchool();
 
   // ── Local UI states ──
   const [showForm, setShowForm] = useState(false);
@@ -117,6 +120,10 @@ export default function SchoolPage() {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
+
+  // Delete dialog
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteSelected, setDeleteSelected] = useState<ISchool | null>(null);
 
   // Detail dialog
   const [detailOpen, setDetailOpen] = useState(false);
@@ -337,6 +344,18 @@ export default function SchoolPage() {
                         className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 dark:hover:border-emerald-700 dark:hover:text-emerald-400 transition-colors"
                       >
                         <Pencil className="h-3.5 w-3.5" />
+                      </button>
+
+                      {/* Delete */}
+                      <button
+                        title="Hapus data"
+                        onClick={() => {
+                          setDeleteSelected(school);
+                          setShowDelete(true);
+                        }}
+                        className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 dark:hover:bg-destructive/10 dark:hover:border-destructive/90 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </TableCell>
@@ -582,6 +601,51 @@ export default function SchoolPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation Dialog ── */}
+      <Dialog open={showDelete} onOpenChange={setShowDelete}>
+        <DialogContent className="sm:max-w-sm rounded-2xl border border-border/50 shadow-xl p-0 gap-0 overflow-hidden bg-background">
+          <DialogHeader className="px-5 pt-5 pb-4 border-b border-border/40">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-red-100 dark:bg-red-950/40 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-[15px] font-semibold">Hapus Data Sekolah</DialogTitle>
+                <DialogDescription className="text-[11.5px] text-muted-foreground">Tindakan ini tidak dapat dibatalkan</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="px-5 py-5 text-[13.5px] text-muted-foreground">
+            Apakah Anda yakin ingin menghapus <strong className="text-foreground">{deleteSelected?.name}</strong>?
+          </div>
+
+          <div className="flex gap-3 px-5 pb-5 pt-2 border-t border-border/40 bg-muted/10">
+            <Button
+              variant="outline"
+              onClick={() => setShowDelete(false)}
+              className="flex-1 h-8.5 text-[13px] rounded-lg border-border/60"
+            >
+              Batal
+            </Button>
+            <Button
+              disabled={deleteSchool.isPending}
+              onClick={() => {
+                if (!deleteSelected?._id) return;
+                deleteSchool.mutate(deleteSelected._id, {
+                  onSuccess: () => {
+                    setShowDelete(false);
+                  },
+                });
+              }}
+              className="flex-1 h-8.5 text-[13px] rounded-lg bg-red-600 hover:bg-red-700 text-white shadow-sm"
+            >
+              {deleteSchool.isPending ? "Menghapus..." : "Ya, Hapus Permanen"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

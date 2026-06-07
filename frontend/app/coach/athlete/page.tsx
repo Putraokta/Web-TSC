@@ -17,6 +17,7 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
+import { TablePagination } from "@/components/ui/table-pagination";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -144,6 +145,8 @@ function DetailRow({ label, value }: { label: string; value: React.ReactNode }) 
 }
 
 // ── Main Page Component ──────────────────────────────────────────────────────
+const PAGE_SIZE = 10;
+
 export default function CoachAthletePage() {
   // Lists state
   const [athletes, setAthletes] = useState<IAthlete[]>([]);
@@ -156,6 +159,7 @@ export default function CoachAthletePage() {
   const [selectedBeltFilter, setSelectedBeltFilter] = useState("all");
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Modals state
   const [detailOpen, setDetailOpen] = useState(false);
@@ -251,6 +255,18 @@ export default function CoachAthletePage() {
 
     return result;
   }, [athletes, searchQuery, selectedBeltFilter, selectedSchoolFilter, sortOrder, schoolMap]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedBeltFilter, selectedSchoolFilter, sortOrder]);
+
+  // Paginated Data
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredData.slice(start, start + PAGE_SIZE);
+  }, [filteredData, currentPage]);
 
   // Open detail dialog
   const openDetail = async (id: string) => {
@@ -546,7 +562,7 @@ export default function CoachAthletePage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((athlete) => (
+                paginatedData.map((athlete) => (
                   <TableRow
                     key={athlete._id}
                     className="border-b border-border/40 hover:bg-muted/25 transition-colors duration-100"
@@ -624,6 +640,15 @@ export default function CoachAthletePage() {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        <TablePagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredData.length}
+          pageSize={PAGE_SIZE}
+        />
       </div>
 
       {/* ── Create Dialog ── */}
