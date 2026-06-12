@@ -1,8 +1,4 @@
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import { useForm } from "react-hook-form";
@@ -20,7 +16,7 @@ export function useAthletes(params?: Record<string, any>) {
     queryKey: athleteKey.lists(),
     queryFn: async () => {
       const res = await athleteService.list(params);
-      const data = Array.isArray(res) ? res : res?.data ?? [];
+      const data = Array.isArray(res) ? res : (res?.data ?? []);
       return data;
     },
   });
@@ -45,7 +41,11 @@ export function useAthleteDetail(id: string | null) {
 const createAthleteSchema = yup.object().shape({
   name: yup.string().required("Nama atlet wajib diisi"),
   birthdate: yup.date().required("Tanggal lahir wajib diisi"),
-  schools: yup.array().of(yup.string().required()).min(1, "Minimal pilih satu sekolah").default([]),
+  schools: yup
+    .array()
+    .of(yup.string().required())
+    .min(1, "Minimal pilih satu sekolah")
+    .default([]),
   belt: yup.string().nullable().default(null),
   imageUrl: yup.string().nullable().default(""),
   user: yup.string().default(""), // will be ignored/replaced by backend if empty
@@ -70,7 +70,10 @@ export function useCreateAthleteForm(onSuccessCallback?: () => void) {
 
   const mutation = useMutation({
     mutationFn: async (payload: CreateAthleteFormValues) => {
+
       const res = await athleteService.create(payload as any);
+      
+
       return res?.data ?? res;
     },
     onSuccess: () => {

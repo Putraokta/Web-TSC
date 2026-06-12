@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
   useFinances,
@@ -164,6 +164,7 @@ export default function FinancePage() {
   });
   const updateFinance = useUpdateFinance();
   const deleteFinance = useDeleteFinance();
+  const [showAll, setShowAll] = useState(false);
 
   // ── Detail dialog ──
   const [open, setOpen] = useState(false);
@@ -187,12 +188,38 @@ export default function FinancePage() {
   const [deleteSelected, setDeleteSelected] = useState<IFinance | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const [selectedPeriod, setSelectedPeriod] = useState(() => {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  });
+
+  const [yearStr, monthStr] = selectedPeriod.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+
+  const filteredItems = useMemo(() => {
+    if (showAll) return items;
+
+    return items.filter((f) => {
+      if (!f.date) return false;
+
+      const d = new Date(f.date);
+      return d.getFullYear() === year && d.getMonth() + 1 === month;
+    });
+  }, [items, year, month, showAll]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedPeriod, showAll]);
+
   // Paginated items
-  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
   const paginatedItems = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
-    return items.slice(start, start + PAGE_SIZE);
-  }, [items, currentPage]);
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, currentPage]);
 
   const submitting = updateFinance.isPending || deleteFinance.isPending;
 
@@ -221,33 +248,137 @@ export default function FinancePage() {
     setShowDelete(true);
   };
 
+  const exportToPdf = async () => {
+    try {
+      const { jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const doc = new jsPDF();
+
+      const bulan = new Date(year, month - 1).toLocaleDateString("id-ID", {
+        month: "long",
+        year: "numeric",
+      });
+
+      const income = filteredItems
+        .filter((f) => f.type === "income")
+        .reduce((s, f) => s + Number(f.balance), 0);
+
+      const expense = filteredItems
+        .filter((f) => f.type === "expense")
+        .reduce((s, f) => s + Number(f.balance), 0);
+
+      const net = income - expense;
+
+      // Title
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text("Trisula Sport Club", 14, 20);
+
+      doc.setFontSize(12);
+      doc.setFont("helvetica", "normal");
+      doc.text("Laporan Keuangan", 14, 28);
+      doc.text(`Periode: ${bulan}`, 14, 34);
+
+      // Summary
+      doc.text(`Pemasukan: ${income}`, 14, 45);
+      doc.text(`Pengeluaran: ${expense}`, 14, 52);
+      doc.text(`Saldo: ${net}`, 14, 59);
+
+      // Table
+      const tableData = filteredItems.map((f) => [
+        f.type === "income" ? "Pemasukan" : "Pengeluaran",
+        f.balance,
+        f.description || "-",
+        f.date
+          ? new Date(f.date).toLocaleDateString("id-ID")
+          : "-",
+      ]);
+
+      autoTable(doc, {
+        startY: 70,
+        head: [["Tipe", "Jumlah", "Deskripsi", "Tanggal"]],
+        body: tableData,
+      });
+
+      doc.save(`Laporan_Keuangan_${selectedPeriod}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert("Gagal export PDF");
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
 
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-[20px] font-semibold tracking-tight text-foreground">Keuangan</h2>
           <p className="text-[13px] text-muted-foreground mt-0.5">
-            {!loading && `${items.length} transaksi tercatat`}
+            {!loading && `${filteredItems.length} transaksi tercatat`}
           </p>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            createForm.reset();
-            createForm.setValue("date", new Date());
-            setShowCreate(true);
-          }}
-          className="gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Tambah
-        </Button>
+
+        <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center gap-2">
+            {showAll ? (
+              <div className="text-[13px] text-muted-foreground px-3 py-2 border rounded-lg">
+                Menampilkan: Semua Data
+              </div>
+            ) : (
+              <Input
+                type="month"
+                value={selectedPeriod}
+                onChange={(e) => setSelectedPeriod(e.target.value)}
+                className="h-9 w-[160px] text-[13px] rounded-lg border-border/60"
+              />
+            )}
+          </div>
+
+          <Button
+            size="sm"
+            variant={showAll ? "default" : "outline"}
+            onClick={() => setShowAll(!showAll)}
+            className="h-9 px-4 text-[13px]"
+          >
+            {showAll ? "Per Bulan" : "Semua Data"}
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => {
+              createForm.reset();
+              createForm.setValue("date", new Date());
+              setShowCreate(true);
+            }}
+            className="gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Tambah
+          </Button>
+
+
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={exportToPdf}
+            disabled={showAll}
+            className={cn(
+              "h-9 px-4 text-[13px] rounded-lg border-border/60 gap-2",
+              showAll && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            Export PDF
+          </Button>
+
+        </div>
+
       </div>
 
       {/* ── Summary cards ── */}
-      {!loading && items.length > 0 && <SummaryCards items={items} />}
+      {!loading && filteredItems.length > 0 && <SummaryCards items={filteredItems} />}
 
       {/* ── Table card ── */}
       <div className="rounded-xl border border-border/50 bg-card shadow-sm overflow-hidden">
@@ -284,7 +415,7 @@ export default function FinancePage() {
           <TableBody>
             {loading ? (
               <SkeletonRows />
-            ) : items.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="py-16 text-center">
                   <div className="flex flex-col items-center gap-2">
@@ -367,7 +498,7 @@ export default function FinancePage() {
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
-          totalItems={items.length}
+          totalItems={filteredItems.length}
           pageSize={PAGE_SIZE}
         />
       </div>
@@ -439,10 +570,10 @@ export default function FinancePage() {
                   value={
                     selected.date
                       ? new Date(selected.date).toLocaleDateString("id-ID", {
-                          day: "2-digit",
-                          month: "long",
-                          year: "numeric",
-                        })
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })
                       : "—"
                   }
                 />
@@ -532,9 +663,8 @@ export default function FinancePage() {
                 type="number"
                 {...createForm.register("balance")}
                 placeholder="0"
-                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
-                  createForm.formState.errors.balance ? "border-red-500" : ""
-                }`}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${createForm.formState.errors.balance ? "border-red-500" : ""
+                  }`}
               />
               {createForm.formState.errors.balance && (
                 <span className="text-[11px] text-red-500 mt-1">{createForm.formState.errors.balance.message}</span>
@@ -545,9 +675,8 @@ export default function FinancePage() {
               <Input
                 type="date"
                 {...createForm.register("date")}
-                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
-                  createForm.formState.errors.date ? "border-red-500" : ""
-                }`}
+                className={`h-8 text-[13px] rounded-lg border-border/60 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${createForm.formState.errors.date ? "border-red-500" : ""
+                  }`}
               />
               {createForm.formState.errors.date && (
                 <span className="text-[11px] text-red-500 mt-1">{createForm.formState.errors.date.message}</span>

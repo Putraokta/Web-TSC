@@ -44,6 +44,7 @@ import {
   School as SchoolIcon,
   User as UserIcon,
   Lock,
+  EyeOff,
 } from "lucide-react";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -140,6 +141,7 @@ export default function CoachPage() {
   const [birthdate, setBirthdate] = useState("");
   const [selectedSchoolIds, setSelectedSchoolIds] = useState<string[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { form: createForm, onSubmit: onCreateSubmit, isPending: isCreatePending } = useCreateCoachForm(() => setShowCreate(false));
 
@@ -182,7 +184,7 @@ export default function CoachPage() {
   // Open Create Modal
   const openCreate = () => {
     createForm.reset();
-    createForm.setValue("password", "pelatih123");
+    // createForm.setValue("password", "pelatih123");
     setShowCreate(true);
   };
 
@@ -577,6 +579,33 @@ export default function CoachPage() {
               />
               {createForm.formState.errors.name && (
                 <span className="text-[11px] text-red-500">{createForm.formState.errors.name.message}</span>
+              )}
+            </FormField>
+
+            <FormField label="Kata Sandi">
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Masukkan kata sandi"
+                  {...createForm.register("password")}
+                  className={`h-8 text-[13px] rounded-lg border-border/60 pr-8 focus-visible:ring-1 focus-visible:ring-violet-500/40 ${
+                    createForm.formState.errors.password ? "border-red-500" : ""
+                  }`}
+                />
+                <Lock className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+
+                {/* Icon mata */}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground/60"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+
+              {createForm.formState.errors.password && (
+                <span className="text-[11px] text-red-500">{createForm.formState.errors.password.message}</span>
               )}
             </FormField>
 

@@ -49,6 +49,7 @@ router.delete("/coaches/:id", [authMiddleware.authorization, aclMiddleware([ROLE
 
 router.post("/athletes", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS, ROLES.PELATIH]), validate(athleteValidate)], athleteController.create);
 router.get("/athletes", authMiddleware.authorization, athleteController.findAll);
+router.get("/athletes/coach", authMiddleware.authorization, athleteController.findByUser);
 router.get("/athletes/:id", authMiddleware.authorization, athleteController.findOne);
 router.put("/athletes/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS, ROLES.PELATIH]), validate(athleteUpdateValidate)], athleteController.update);
 router.delete("/athletes/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS, ROLES.PELATIH])], athleteController.remove);

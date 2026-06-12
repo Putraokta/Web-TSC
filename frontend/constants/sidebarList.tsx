@@ -48,19 +48,19 @@ export const staffMenuItems: SidebarItem[] = [
     icon: Landmark,
     href: "/staff/finance",
   },
-  {
-    title: "Report Finance",
-    icon: Proportions,
-    href: "/staff/report",
-  },
+  // {
+  //   title: "Report Finance",
+  //   icon: Proportions,
+  //   href: "/staff/report",
+  // },
 ];
 
 export const staffSettingsItems: SidebarItem[] = [
-  {
-    title: "Coach Settings",
-    icon: Settings,
-    href: "/staff/settings",
-  },
+  // {
+  //   title: "Coach Settings",
+  //   icon: Settings,
+  //   href: "/staff/settings",
+  // },
   {
     title: "Keluar",
     icon: LogOut,

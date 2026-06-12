@@ -2,17 +2,17 @@
 
 import React from "react";
 import { Controller } from "react-hook-form";
-import useLogin from "@/hooks/useLogin";
+import useLoginCoach from "@/hooks/useLoginCoach";
 import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
-  const { control, errors, handlerSignIn, isPendingSignIn } = useLogin();
-  const router = useRouter();
+  const { control, errors, handlerSignIn, isPendingSignIn } = useLoginCoach();
+  const router = useRouter()
 
   return (
     <form onSubmit={handlerSignIn} className="auth-form">
       <div className="auth-form-header">
-        <h2>Selamat Datang Pengurus</h2>
+        <h2>Selamat Datang Pelatih</h2>
         <p>Masuk ke portal akademik TSC</p>
       </div>
 
@@ -27,9 +27,9 @@ export default function LoginForm() {
               <circle cx="12" cy="7" r="4" />
             </svg>
           </span>
-          <Controller name="username" control={control} render={({ field }) => <input {...field} type="text" placeholder="Masukkan email, username, atau nama" autoComplete="off" />} />
+          <Controller name="name" control={control} render={({ field }) => <input {...field} type="text" placeholder="Masukkan email, username, atau nama" autoComplete="off" />} />
         </div>
-        {errors.username && <div className="auth-error">{errors.username.message}</div>}
+        {errors.name && <div className="auth-error">{errors.name.message}</div>}
       </div>
 
       <div className="auth-field">

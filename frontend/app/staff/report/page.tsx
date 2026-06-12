@@ -63,14 +63,14 @@ function StatCard({
       }}
     >
       <span
-        style={{
-          fontSize: 11,
-          fontWeight: 600,
-          letterSpacing: "0.12em",
-          textTransform: "uppercase",
-          color: "#6b7280",
-          fontFamily: "'DM Mono', 'Fira Mono', monospace",
-        }}
+        // style={{
+        //   fontSize: 11,
+        //   fontWeight: 600,
+        //   letterSpacing: "0.12em",
+        //   textTransform: "uppercase",
+        //   color: "#6b7280",
+
+        // }}
       >
         {label}
       </span>
@@ -79,7 +79,7 @@ function StatCard({
           fontSize: 26,
           fontWeight: 700,
           color: colors.text,
-          fontFamily: "'Syne', 'DM Mono', sans-serif",
+
           letterSpacing: "-0.02em",
           lineHeight: 1,
         }}
@@ -105,7 +105,7 @@ function Badge({ type }: { type: string }) {
         fontWeight: 600,
         letterSpacing: "0.06em",
         textTransform: "uppercase",
-        fontFamily: "'DM Mono', monospace",
+
         background: isIncome ? "#dcfce7" : "#fee2e2",
         color: isIncome ? "#15803d" : "#b91c1c",
         border: isIncome ? "1px solid #bbf7d0" : "1px solid #fecaca",
@@ -369,11 +369,11 @@ export default function ReportPage() {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
               <div style={{ width: 4, height: 28, background: "linear-gradient(180deg, #16a34a, #2563eb)", borderRadius: 4 }} />
-              <h1 style={{ fontFamily: "'Syne', sans-serif", fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", color: "#0f172a", margin: 0 }}>
+              <h1 style={{ fontSize: 38, fontWeight: 1000, letterSpacing: "-0.03em", color: "#0f172a", margin: 0 }}>
                 Laporan Keuangan
               </h1>
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em" }}>
+            <p style={{ margin: 0, fontSize: 13, color: "#94a3b8",  letterSpacing: "0.05em" }}>
               PERIODE · {bulan.toUpperCase()}
             </p>
           </div>
@@ -381,7 +381,7 @@ export default function ReportPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             {/* Period Selector */}
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ffffff", border: "1px solid #e2e8f0", padding: "8px 16px", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
-              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em" }}>Periode:</span>
+              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600, textTransform: "uppercase",  letterSpacing: "0.05em" }}>Periode:</span>
               <input
                 type="month"
                 value={selectedPeriod}
@@ -392,7 +392,7 @@ export default function ReportPage() {
                   fontSize: 13,
                   fontWeight: 600,
                   color: "#374151",
-                  fontFamily: "'DM Sans', sans-serif",
+    
                   cursor: "pointer",
                   background: "transparent",
                 }}
@@ -465,13 +465,13 @@ export default function ReportPage() {
             justifyContent: "space-between",
             background: "#fafbfc",
           }}>
-            <span style={{ fontFamily: "'Syne', sans-serif", fontWeight: 700, fontSize: 15, color: "#0f172a" }}>
+            <span style={{ fontWeight: 700, fontSize: 15, color: "#0f172a" }}>
               Detail Transaksi
             </span>
             {report?.details && (
               <span style={{
                 fontSize: 11,
-                fontFamily: "'DM Mono', monospace",
+
                 color: "#64748b",
                 background: "#f1f5f9",
                 border: "1px solid #e2e8f0",
@@ -499,7 +499,7 @@ export default function ReportPage() {
                         letterSpacing: "0.12em",
                         textTransform: "uppercase",
                         color: "#94a3b8",
-                        fontFamily: "'DM Mono', monospace",
+
                         background: "#f8fafc",
                         whiteSpace: "nowrap",
                       }}
@@ -541,7 +541,7 @@ export default function ReportPage() {
                         padding: "14px 20px",
                         fontSize: 14,
                         fontWeight: 600,
-                        fontFamily: "'DM Mono', monospace",
+
                         color: d.type === "income" ? "#10b981" : "#ef4444",
                         letterSpacing: "-0.01em",
                       }}>
@@ -561,7 +561,7 @@ export default function ReportPage() {
                       <td style={{
                         padding: "14px 20px",
                         fontSize: 12,
-                        fontFamily: "'DM Mono', monospace",
+  
                         color: "#94a3b8",
                         whiteSpace: "nowrap",
                       }}>

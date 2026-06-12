@@ -201,7 +201,7 @@ export default function CoachAthletePage() {
     setError(null);
     try {
       const [athleteRes, schoolRes] = await Promise.all([
-        athleteService.list({ limit: 1000 }),
+        athleteService.getByCoach({ limit: 1000 }),
         schoolService.list({ limit: 1000 }),
       ]);
       setAthletes(athleteRes?.data ?? athleteRes ?? []);
@@ -387,6 +387,7 @@ export default function CoachAthletePage() {
       setSubmitting(false);
     }
   };
+
 
   return (
     <div className="p-6 space-y-6">

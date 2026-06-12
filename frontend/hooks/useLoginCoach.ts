@@ -7,15 +7,15 @@ import * as yup from "yup";
 
 import authService from "@/services/auth.service";
 import { authKey } from "@/keys/auth.key";
-import { ILogin } from "@/types/Auth";
+import { ILoginCoach } from "@/types/Auth";
 
 // Schema validasi dengan Yup (karena kamu menggunakan yup di package.json)
 const loginSchema = yup.object().shape({
-  username: yup.string().required("Username atau Nama wajib diisi"),
+  name: yup.string().required("Username atau Nama wajib diisi"),
   password: yup.string().required("Password wajib diisi"),
 });
 
-export default function useLogin() {
+export default function useLoginCoach() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -26,16 +26,16 @@ export default function useLogin() {
     setError,
     reset,
     formState: { errors },
-  } = useForm<ILogin>({
+  } = useForm<ILoginCoach>({
     resolver: yupResolver(loginSchema),
     defaultValues: {
-      username: "",
+      name: "",
       password: "",
     },
   });
 
   const { mutate: mutateSignIn, isPending: isPendingSignIn } = useMutation({
-    mutationFn: authService.login, // Memanggil fungsi login dari authService
+    mutationFn: authService.loginCoach, // Memanggil fungsi loginCoach dari authService
     onError(error: any) {
       const message = error?.response?.data?.message || error.message || "Login failed";
       setError("root", {
@@ -49,6 +49,7 @@ export default function useLogin() {
       queryClient.invalidateQueries({ queryKey: authKey.me() });
       toast.success("Login successful");
       reset();
+      router.push("/coach/dashboard");
 
       // Cek callbackUrl dari URL Params
       const callbackUrl = searchParams.get("callbackUrl");
@@ -56,23 +57,15 @@ export default function useLogin() {
       if (callbackUrl) {
         // Ada callbackUrl -> kembali ke halaman yang di-request sebelumnya
         router.push(callbackUrl);
-      } else {
-        // Redirect berdasarkan role dari backend
-        const role = data?.data?.user.role;
+        
 
-        if (role === "pengurus") {
-          router.push("/staff/dashboard");
-        } else if (role === "pelatih") {
-          router.push("/coach/dashboard");
-        } else {
-          router.push("/");
-        }
-      }
+      } 
     },
   });
 
   // Helper function untuk trigger submit form
   const handlerSignIn = handleSubmit((data) => {
+    //@ts-ignore
     mutateSignIn(data);
   });
 

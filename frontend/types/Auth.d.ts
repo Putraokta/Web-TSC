@@ -3,6 +3,11 @@ export interface ILogin {
   password: string;
 }
 
+export interface ILoginCoach {
+  name: string;
+  password: string;
+}
+
 export interface IUser {
   _id?: string;
   username?: string;

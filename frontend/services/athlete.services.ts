@@ -16,6 +16,9 @@ const athleteService = {
 
   remove: (id: string) =>
     instance.delete(`${endpoint.ATHLETE}/${id}`).then((res) => res.data),
+
+  getByCoach: (params?: Record<string, any>) =>
+    instance.get(`${endpoint.ATHLETE}/coach`, { params }).then((res) => res.data),
 };
 
 export default athleteService;
