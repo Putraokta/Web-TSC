@@ -312,7 +312,9 @@ export default function FinancePage() {
     <div className="p-6 space-y-6">
 
       {/* ── Page header ── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+        {/* Title */}
         <div>
           <h2 className="text-[20px] font-semibold tracking-tight text-foreground">Keuangan</h2>
           <p className="text-[13px] text-muted-foreground mt-0.5">
@@ -320,10 +322,13 @@ export default function FinancePage() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        {/* Controls */}
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+
+          {/* Row 1: Period picker + toggle */}
           <div className="flex items-center gap-2">
             {showAll ? (
-              <div className="text-[13px] text-muted-foreground px-3 py-2 border rounded-lg">
+              <div className="flex-1 text-[13px] text-muted-foreground px-3 py-2 border rounded-lg sm:flex-none sm:w-auto whitespace-nowrap">
                 Menampilkan: Semua Data
               </div>
             ) : (
@@ -331,47 +336,47 @@ export default function FinancePage() {
                 type="month"
                 value={selectedPeriod}
                 onChange={(e) => setSelectedPeriod(e.target.value)}
-                className="h-9 w-[160px] text-[13px] rounded-lg border-border/60"
+                className="flex-1 h-9 text-[13px] rounded-lg border-border/60 sm:w-[160px]"
               />
             )}
+            <Button
+              size="sm"
+              variant={showAll ? "default" : "outline"}
+              onClick={() => setShowAll(!showAll)}
+              className="h-9 px-4 text-[13px] flex-shrink-0"
+            >
+              {showAll ? "Per Bulan" : "Semua Data"}
+            </Button>
           </div>
 
-          <Button
-            size="sm"
-            variant={showAll ? "default" : "outline"}
-            onClick={() => setShowAll(!showAll)}
-            className="h-9 px-4 text-[13px]"
-          >
-            {showAll ? "Per Bulan" : "Semua Data"}
-          </Button>
+          {/* Row 2: Actions */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                createForm.reset();
+                createForm.setValue("date", new Date());
+                setShowCreate(true);
+              }}
+              className="flex-1 sm:flex-none gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Tambah
+            </Button>
 
-          <Button
-            size="sm"
-            onClick={() => {
-              createForm.reset();
-              createForm.setValue("date", new Date());
-              setShowCreate(true);
-            }}
-            className="gap-2 h-9 px-4 text-[13px] rounded-lg bg-violet-600 hover:bg-violet-700 dark:bg-violet-600 dark:hover:bg-violet-700 text-white shadow-sm"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Tambah
-          </Button>
-
-
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={exportToPdf}
-            disabled={showAll}
-            className={cn(
-              "h-9 px-4 text-[13px] rounded-lg border-border/60 gap-2",
-              showAll && "opacity-50 cursor-not-allowed"
-            )}
-          >
-            Export PDF
-          </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={exportToPdf}
+              disabled={showAll}
+              className={cn(
+                "flex-1 sm:flex-none h-9 px-4 text-[13px] rounded-lg border-border/60 gap-2",
+                showAll && "opacity-50 cursor-not-allowed"
+              )}
+            >
+              Export PDF
+            </Button>
+          </div>
 
         </div>
 

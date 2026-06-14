@@ -35,3 +35,8 @@ export const reportKey = {
   monthly: (year: number, month: number) =>
     [...reportKey.all, "monthly", year, month] as const,
 };
+
+export const statisticsKey = {
+  all: ["statistics"] as const,
+  summary: () => [...statisticsKey.all, "summary"] as const,
+};

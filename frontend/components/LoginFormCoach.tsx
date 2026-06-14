@@ -19,7 +19,7 @@ export default function LoginForm() {
       {errors.root && <div className="auth-error">{errors.root.message}</div>}
 
       <div className="auth-field">
-        <label>Email, Username, atau Nama</label>
+        <label>Username</label>
         <div className="input-shell">
           <span className="input-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -27,7 +27,7 @@ export default function LoginForm() {
               <circle cx="12" cy="7" r="4" />
             </svg>
           </span>
-          <Controller name="name" control={control} render={({ field }) => <input {...field} type="text" placeholder="Masukkan email, username, atau nama" autoComplete="off" />} />
+          <Controller name="name" control={control} render={({ field }) => <input {...field} type="text" placeholder="Masukkan username" autoComplete="off" />} />
         </div>
         {errors.name && <div className="auth-error">{errors.name.message}</div>}
       </div>

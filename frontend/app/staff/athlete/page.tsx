@@ -616,22 +616,22 @@ export default function StaffAthletePage() {
                         </button>
 
                         {/* Edit */}
-                        <button
+                        {/* <button
                           title="Ubah Data"
                           onClick={() => openEdit(athlete)}
                           className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-emerald-600 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 dark:hover:border-emerald-700 dark:hover:text-emerald-400 transition-colors"
                         >
                           <Pencil className="h-3.5 w-3.5" />
-                        </button>
+                        </button> */}
 
                         {/* Delete */}
-                        <button
+                        {/* <button
                           title="Hapus Atlet"
                           onClick={() => triggerDelete(athlete)}
                           className="h-7 w-7 rounded-md border border-border/60 bg-background flex items-center justify-center text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 dark:hover:bg-destructive/10 dark:hover:border-destructive/90 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
-                        </button>
+                        </button> */}
                       </div>
                     </TableCell>
                   </TableRow>

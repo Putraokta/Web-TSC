@@ -12,9 +12,13 @@ interface CoachLayoutProps {
 export default function CoachLayout({ children }: CoachLayoutProps) {
 	return (
 		<TooltipProvider>
-			<SidebarProvider>
+			<SidebarProvider defaultOpen={true}>
 				<DashboardSidebar />
-				<SidebarInset className="p-6">{children}</SidebarInset>
+				<SidebarInset className="p-4 md:p-6 lg:p-6 pt-16 lg:pt-6">
+					<main className="w-full max-w-full overflow-x-auto">
+						{children}
+					</main>
+				</SidebarInset>
 			</SidebarProvider>
 		</TooltipProvider>
 	);

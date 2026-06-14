@@ -5,6 +5,7 @@ const endpoint = {
     ATHLETE: "/athletes",
     COACH: "/coaches",
     FINANCE: "/finances",
+    STATISTICS: "/statistics",
 
 };
 

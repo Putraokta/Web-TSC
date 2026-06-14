@@ -62,7 +62,7 @@ export const staffSettingsItems: SidebarItem[] = [
   //   href: "/staff/settings",
   // },
   {
-    title: "Keluar",
+    title: "Logout",
     icon: LogOut,
     href: "/logout",
   },
@@ -88,7 +88,7 @@ export const coachMenuItems: SidebarItem[] = [
 
 export const coachSettingsItems: SidebarItem[] = [
   {
-    title: "Keluar",
+    title: "Logout",
     icon: LogOut,
     href: "/logout",
   },

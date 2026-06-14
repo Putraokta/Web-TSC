@@ -14,6 +14,7 @@ import { athleteUpdateValidate, athleteValidate } from "../validators/athlete.va
 import { financeValidate } from "../validators/finance.validate";
 import financeController from "../controllers/finance.controller";
 import financeReportController from "../controllers/financeReport.controller";
+import statisticsController from "../controllers/statistics.controller";
 
 import mediaMiddleware from "../middlewares/media.middleware";
 
@@ -61,5 +62,7 @@ router.put("/finances/:id", [authMiddleware.authorization, aclMiddleware([ROLES.
 router.delete("/finances/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS])], financeController.delete);
 
 router.get("/finances/reports/monthly", authMiddleware.authorization, financeReportController.monthly);
+
+router.get("/statistics", authMiddleware.authorization, statisticsController.getStatistics);
 
 export default router;
