@@ -21,7 +21,7 @@ export default {
     },
 
     async findAll(req: IAuthRequest, res: Response) {
-        const { page = 1, limit = 10, search } = req.query as unknown as IPagination;
+        const { page = 1, limit = 1000, search } = req.query as unknown as IPagination;
 
         try {
             const query: any = {isActive: { $ne: false }};

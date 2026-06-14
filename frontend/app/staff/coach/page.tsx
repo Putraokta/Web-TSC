@@ -156,7 +156,7 @@ export default function CoachPage() {
   }, [coaches, searchQuery]);
 
   // Paginated coaches
-  const totalPages = Math.ceil(filteredCoaches.length / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filteredCoaches.length / PAGE_SIZE));
   const paginatedCoaches = useMemo(() => {
     const start = (currentPage - 1) * PAGE_SIZE;
     return filteredCoaches.slice(start, start + PAGE_SIZE);

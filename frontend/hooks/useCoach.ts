@@ -1,9 +1,5 @@
 import { useMemo } from "react";
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import * as yup from "yup";
 import { useForm } from "react-hook-form";
@@ -22,7 +18,7 @@ export function useCoaches() {
   return useQuery<ICoach[]>({
     queryKey: coachKey.lists(),
     queryFn: async () => {
-      const res = await coachService.list();
+      const res = await coachService.list({ limit: 1000 }); // ← tambah ini
       return res?.data ?? res ?? [];
     },
   });
