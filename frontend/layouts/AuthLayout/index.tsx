@@ -31,7 +31,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             </h1>
             
             <p className="brand-subtitle text-sm sm:text-base text-zinc-400 max-w-md lg:max-w-none">
-              Portal Akademik untuk pengelolaan data anggota, jadwal latihan, dan informasi kegiatan klub
+              Portal Akademik untuk pengelolaan data anggota, dokumen kegiatan, dan informasi kegiatan klub
             </p>
           </section>
 

@@ -68,4 +68,4 @@ export const CoachSchema = new mongoose.Schema<ICoach>({
 const CoachModel = mongoose.model<ICoach>("Coach", CoachSchema);
 
 export default CoachModel;
-
+

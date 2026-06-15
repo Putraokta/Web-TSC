@@ -7,7 +7,7 @@ import { schoolValidate } from "../validators/school.validate";
 import schoolController from "../controllers/school.controller";
 import { validate } from "../middlewares/validator.middleware";
 import mediaController from "../controllers/media.controller";
-import { coachValidate, coachLoginValidate } from "../validators/coach.validate";
+import { coachCreateValidate, coachUpdateValidate, coachLoginValidate } from "../validators/coach.validate";
 import coachController from "../controllers/coach.controller";
 import athleteController from "../controllers/athlete.controller";
 import { athleteUpdateValidate, athleteValidate } from "../validators/athlete.validate";
@@ -42,10 +42,10 @@ router.get("/media", authMiddleware.authorization, mediaController.listMedia);
 router.put("/media/:id", authMiddleware.authorization, mediaController.updateMedia);
 router.delete("/media/:id", authMiddleware.authorization, mediaController.deleteMedia);
 
-router.post("/coaches", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS]), validate(coachValidate)], coachController.create);
+router.post("/coaches", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS]), validate(coachCreateValidate)], coachController.create);
 router.get("/coaches", authMiddleware.authorization, coachController.findAll);
 router.get("/coaches/:id", authMiddleware.authorization, coachController.findOne);
-router.put("/coaches/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS]), validate(coachValidate)], coachController.update);
+router.put("/coaches/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS]), validate(coachUpdateValidate)], coachController.update);
 router.delete("/coaches/:id", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS])], coachController.remove);
 
 router.post("/athletes", [authMiddleware.authorization, aclMiddleware([ROLES.PENGURUS, ROLES.PELATIH]), validate(athleteValidate)], athleteController.create);

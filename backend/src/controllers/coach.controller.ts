@@ -2,98 +2,132 @@ import { Response } from "express";
 import { IAuthRequest, IPagination } from "../utils/interfaces";
 import { error, pagination, success, unauthorized } from "../utils/response";
 import CoachModel from "../models/coach.model";
+import { hashPassword } from "../utils/password";
 
 export default {
-    async create(req: IAuthRequest, res: Response) {
-        try {
-            if (!req.user || !req.user._id) return unauthorized(res);
-            req.body.user = req.user._id;
-            // map incoming schoolIds -> schools for the model
-            if (req.body.schoolIds) {
-                req.body.schools = req.body.schoolIds;
-                delete req.body.schoolIds;
-            }
-            const result = await CoachModel.create(req.body);
-            success(res, result, "Coach created successfully");
-        } catch (err) {
-            error(res, err, "Failed to create coach");
-        }
-    },
+  async create(req: IAuthRequest, res: Response) {
+    try {
+      if (!req.user || !req.user._id) return unauthorized(res);
+      req.body.user = req.user._id;
+      // map incoming schoolIds -> schools for the model
+      if (req.body.schoolIds) {
+        req.body.schools = req.body.schoolIds;
+        delete req.body.schoolIds;
+      }
+      const result = await CoachModel.create(req.body);
+      success(res, result, "Coach created successfully");
+    } catch (err) {
+      error(res, err, "Failed to create coach");
+    }
+  },
 
-    async findAll(req: IAuthRequest, res: Response) {
-        const { page = 1, limit = 1000, search } = req.query as unknown as IPagination;
+  async findAll(req: IAuthRequest, res: Response) {
+    const {
+      page = 1,
+      limit = 1000,
+      search,
+    } = req.query as unknown as IPagination;
 
-        try {
-            const query: any = {isActive: { $ne: false }};
-            if (search){
-                Object.assign(query, {
-                         name: { $regex: search, $options: "i" },
-                });
-            }
+    try {
+      const query: any = { isActive: { $ne: false } };
+      if (search) {
+        Object.assign(query, {
+          name: { $regex: search, $options: "i" },
+        });
+      }
 
-            const [count, results] = await Promise.all([
-                CoachModel.countDocuments(query),
-                CoachModel.find(query)
-                    .skip((+page - 1) * +limit)
-                    .limit(+limit)
-                    .sort({ createdAt: -1 })
-                    .exec(),
-            ]);
+      const [count, results] = await Promise.all([
+        CoachModel.countDocuments(query),
+        CoachModel.find(query)
+          .skip((+page - 1) * +limit)
+          .limit(+limit)
+          .sort({ createdAt: -1 })
+          .exec(),
+      ]);
 
-            pagination(res, "Successfully retrieved coaches", { total: count, totalPages: Math.ceil(count / limit), currentPage: Number(page) }, results);
-        } catch (err) {
-            error(res, err, "Failed to retrieve coaches");
-        }
-        
-            
-    },
+      pagination(
+        res,
+        "Successfully retrieved coaches",
+        {
+          total: count,
+          totalPages: Math.ceil(count / limit),
+          currentPage: Number(page),
+        },
+        results,
+      );
+    } catch (err) {
+      error(res, err, "Failed to retrieve coaches");
+    }
+  },
 
-    async findOne(req: IAuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const result = await CoachModel.findById(id);
-            success(res, result, "Coach retrieved successfully");
-        } catch (err) {
-            error(res, err, "Failed to retrieve coach");
-        }
-    },
+  async findOne(req: IAuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+      const result = await CoachModel.findById(id);
+      success(res, result, "Coach retrieved successfully");
+    } catch (err) {
+      error(res, err, "Failed to retrieve coach");
+    }
+  },
 
-    async update(req: IAuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            // prevent client from changing owner
-            if (req.body.user) delete req.body.user;
-            // map schoolIds -> schools when updating
-            if (req.body.schoolIds) {
-                req.body.schools = req.body.schoolIds;
-                delete req.body.schoolIds;
-            }
-            const result = await CoachModel.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+  async update(req: IAuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
 
-            if (!result) {
-                return error(res, null, "Coach not found", 404);
-            }
+      // Mencegah perubahan owner
+      if (req.body.user) {
+        delete req.body.user;
+      }
 
-            success(res, result, "Coach updated successfully");
-        } catch (err) {
-            if (err instanceof Error && "code" in err && err.code === 11000) {
-                return error(res, { message: "Duplicate key error"}, "Failed to update coach due to duplicate key");
-            }
-        }
-    },
+      // Mapping schoolIds -> schools
+      if (req.body.schoolIds) {
+        req.body.schools = req.body.schoolIds;
+        delete req.body.schoolIds;
+      }
 
-    async remove(req: IAuthRequest, res: Response) {
-        try {
-            const { id } = req.params;
-            const result = await CoachModel.findByIdAndUpdate(id, { isActive: false }, { new: true });
+      // Password opsional saat update
+      if (req.body.password) {
+        req.body.password = await hashPassword(req.body.password);
+      } else {
+        delete req.body.password;
+      }
 
-            if (!result) {
-                return error(res, null, "Coach not found", 404);
-            }
+      const result = await CoachModel.findByIdAndUpdate(id, req.body, {
+        new: true,
+        runValidators: true,
+      });
 
-            success(res, null, "Coach deleted successfully");
-        } catch (err) {
-            error(res, err, "Failed to delete coach");
-        }
-    },
+      if (!result) {
+        return error(res, null, "Coach not found", 404);
+      }
+
+      return success(res, result, "Coach updated successfully");
+    } catch (err: any) {
+      if (err?.code === 11000) {
+        return error(
+          res,
+          { message: "Duplicate key error" },
+          "Failed to update coach due to duplicate key",
+        );
+      }
+
+      return error(res, err, "Failed to update coach", 500);
+    }
+  },
+
+  async remove(req: IAuthRequest, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const result = await CoachModel.findByIdAndDelete(id);
+
+      if (!result) {
+        return error(res, null, "Coach not found", 404);
+      }
+
+      return success(res, null, "Coach deleted successfully");
+    } catch (err) {
+      return error(res, err, "Failed to delete coach");
+    }
+  },
 };
